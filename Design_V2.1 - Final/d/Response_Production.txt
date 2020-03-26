@@ -1,0 +1,31 @@
+In Response to 
+
+1) ok
+
+2) 
+GPC0402105-16 - Generic part can be used for C1, C2, C4, C5..
+GPR06030R  - Generic part can be used for R1, R2, R3, R4, R5... 
+
+3) 
+C75 should be 0.1 uF 
+R64 should be 41.2k
+R65 should be 41.2k
+R68 should be 1k
+R69 should be 1k
+
+4) 
+Clock : 
+https://eu.mouser.com/ProductDetail/Epson-Timing/SG-210STF-81920ML3?qs=sGAEpiMZZMt8zWNA7msRCrhcg48ZG9oDP775ScnnUrLzicbD8r3Dlg%3D%3D 
+Mouser-Nr.: 732-SG210STF8.1920L3 
+on stock 
+
+C10,C57 can be replaced by generic 0.01uF cermaic - https://eu.mouser.com/ProductDetail/Murata-Electronics/GRM022R60J103ME19L?qs=%2Fha2pyFadugA8IObDuHuZK6joFFOsnpkCbpBzl2hcnFGLF%252B9xXeMeH1M5mIB4U19
+
+
+U1:
+https://eu.mouser.com/ProductDetail/Renata/SMTU2477N-LF?qs=sGAEpiMZZMt%2F5FJRvmqHBn%2FMIDEp%252ByXz
+Mouser-Nr.: 614-SMTU2477N-LF 
+on stock 
+
+5) ok
+ 
