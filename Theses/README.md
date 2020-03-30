@@ -51,6 +51,6 @@ In this thesis the relationship between EOG data provided by the Traumschreiber 
 The field study discussed in this thesis evaluates the portable high-tech sleep mask for home-based sleep experiments using polysomnography. Additionally, it examines whether the arousal threshold of individual participants can be determined by exposing them to auditory stimulation during the night.
 
 
-#### _The Scienticity of Lucid Dream Research - A Theoretical and Empirical Approach_ - K. Lüth, Bachelor's Thesis (July 2015)
+#### _The Scienticity of Lucid Dream Research - A Theoretical and Empirical Approach_ - K. Lüth, Bachelor's Thesis (July 2015)
 
 This work discusses the science-theoretical and historical background of lucid dream research. It presents a survey concerned with the attitude the public has towards the field. The survey showed that the public has a positive opinion.   
