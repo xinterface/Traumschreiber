@@ -1,0 +1,6 @@
+[submodule "EEG-Droid"]
+	path = EEG-Droid
+	url = https://github.com/adrocampos/EEG-Droid
+[submodule "Traumschreiber-mobileEEG"]
+	path = Traumschreiber-mobileEEG
+	url = https://github.com/mvidaldp/Traumschreiber-mobileEEG
