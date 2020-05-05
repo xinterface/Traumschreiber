@@ -11,7 +11,7 @@ subjects to perform complex polysomnographic sleep and dream experiments at home
 
 #### _Design and implementation of an Android app to  record, store and manage EEG signals_ - R. A. Rojas Campos, Master's Thesis (August 2019)
 
-This thesis describes the most advanced Traumschreiber app to date. With the Android app, the user can collect, plot, save, manage, and share EEG sessions, recorded with the Traumschreiber system. It furthermore introduces a chatbot expert, used to inform the user about epilepsy and presents general information about epilepsy in a clear and accessible way. At the moment the code is available [at this Repository](https://github.com/adrocampos/EEG-Droid) but will soon be included in this one.
+This thesis describes the most advanced Traumschreiber app to date. With the Android app, the user can collect, plot, save, manage, and share EEG sessions, recorded with the Traumschreiber system. It furthermore introduces a chatbot expert, used to inform the user about epilepsy and presents general information about epilepsy in a clear and accessible way. The code is available [in this repository](https://github.com/adrocampos/EEG-Droid).
 
 
 #### _Developing and designing a mediator smartphone application for portable sleep EEG recording and biofeedback with focus on the end user experience_ - M. Jäkel, Bachelor's Thesis (February 2017)
@@ -20,6 +20,12 @@ This thesis reports on the implementation of a prototype Android application tha
 
 
 ## Detection of Event Related Potentials with the Traumschreiber
+
+
+#### _Studying Neural Correlates of Mind Wandering with Mobile EEG_ - M. Bammel, Bachelor's Thesis (April 2020)
+
+This thesis constitutes a replication of a study by Braboszez and Delorme (2011) who identified neural markers of low alertness during mind wandering with the Traumschreiber. The experiments expose a significantly decreased alpha and beta frequency band power during mind wandering. However, the replication demonstrates that studying higher cognitive functions in a mobile setup using the Traumschreiber does not yield equivalent results compared to a stationary research graded EEG system. The full sourcecode of the project is available [in the author's repository](https://github.com/mbammel/BscThesis).
+
 
 #### _Auditory Evoked Potentials with Mobile EEG_ - M. Vidal De Palol, Master's Thesis (March 2019)
 
