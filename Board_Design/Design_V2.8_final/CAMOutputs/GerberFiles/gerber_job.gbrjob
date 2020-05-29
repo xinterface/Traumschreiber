@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2020-05-07T15:10:36Z",
+        "GenerationSoftware": {
+            "Application": "EAGLE",
+            "Vendor": "Autodesk",
+            "Version": "9.6.0"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.376,
+        "LayerNumber": 4,
+        "Name": {
+            "ProjectId": "EEG_v2_8b"
+        },
+        "Owner": "Gordon Pipa <gpipa@uos.de>",
+        "Size": {
+            "X": 58.8264,
+            "Y": 53.721
+        }
+    }
+}
