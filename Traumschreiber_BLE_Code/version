@@ -1,0 +1,27 @@
+works:
+	fetching AD data
+		reads data in 32 Byte packets from one AD
+		writing in ring buffer
+			not since compression was added, but code is still there, commented out
+	compression added
+		fft based compression for each channel is integrated
+			has own buffers for each channel
+	sending via BLE
+		sending via BLE (and fetching AD data) if other device is connected and has enabled notifications (both nicely triggered on BLE-events)
+		packets to be send are stored in ring buffer
+		max 20 Byte packets
+		trying to fill send buffer on each recieved AD packet or if data was sent via BLE
+	data generation added
+		can be toggeled via flag. this then deactivates spi
+		
+		
+constraints:
+	8 channels
+	datarate: according to incoming AD packets (~250Hz)
+	no error output via BLE
+
+
+comments:
+	it crashes after a few seconds when sending AD data, but works with generated data...
+	
+
