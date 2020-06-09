@@ -1,0 +1,29 @@
+
+Compilation and programming the Traumschreiber were tested with Segger Embedded Studio (SES).
+https://www.segger.com/downloads/embedded-studio
+
+for compiling one needs the Nordic SDK 15.3
+https://www.nordicsemi.com/Software-and-tools/Software/nRF5-SDK/Download
+(downloading it with only softdevice s132 is sufficient for use with Traumschreiber)
+
+
+to compile the code:
+- store code folder in the SDK folder at:
+SDK/examples/ble_peripheral
+- open SES
+- choose File -> 'open solution' and navigate to:
+SDK/examples/ble_peripheral/<code folder>/pca10040/s132/ses/
+- and click the .em-file
+
+the main files are
+main.c
+traumschreiber_service.c/.h
+ad_spi.c/.h
+
+to programm the Traumschreiber:
+- compile the project (I use the key F7, should show two partly green bars on the bottom when finished)
+- connect the programming board and connect the Traumschreiber to that one with the grey 10-Pin-Connector
+- switch the Traumschreiber on!!!!
+- use 'Target' -> 'Connect J-Link'
+- use 'Target' -> 'Download ble_app_...'
+during programming the Traumschreiber LED should be off. when finished it should be on. 
