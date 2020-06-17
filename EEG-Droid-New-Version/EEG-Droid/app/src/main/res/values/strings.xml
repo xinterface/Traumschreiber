@@ -1,0 +1,266 @@
+<resources>
+    <string name="app_name">EEGDroid</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_manage_records">ManageRecords</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_title_social_recommendations">Enable social recommendations</string>
+    <string name="pref_description_social_recommendations">Recommendations for people to contact
+        based on your message history
+    </string>
+
+    <string name="pref_title_display_name">Display name</string>
+    <string name="pref_default_display_name">John Smith</string>
+
+    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
+    <string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_example_list_values">
+        <item>1</item>
+        <item>0</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Data &amp; sync</string>
+
+    <string name="pref_title_sync_frequency">Sync frequency</string>
+    <string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array>
+
+    <string-array name="list_preference_entries">
+        <item>Entry 1</item>
+        <item>Entry 2</item>
+        <item>Entry 3</item>
+    </string-array>
+
+    <string-array name="list_preference_entry_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="multi_select_list_preference_default_value" />
+
+    <string name="pref_title_system_sync_settings">System sync settings</string>
+    <string name="pref_header_notifications">Notifications</string>
+    <string name="pref_title_new_message_notifications">New message notifications</string>
+    <string name="pref_title_ringtone">Ringtone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+    <string name="pref_title_vibrate">Vibrate</string>
+    <string name="enter_text">Type your question</string>
+    <string name="microphone">Microphone</string>
+
+    <string name="ble_not_supported">BLE is not supported</string>
+    <string name="label_data">Data:</string>
+    <string name="label_device_address">Device address:</string>
+    <string name="label_state">Status:</string>
+    <string name="no_data">No data</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="title_devices">BLE Device Scan</string>
+    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
+    <string name="unknown_device">Unknown device</string>
+    <string name="unknown_characteristic">Unknown characteristic</string>
+    <string name="unknown_service">Unknown service</string>
+    <string name="menu_connect">Connect</string>
+    <string name="menu_disconnect">Disconnect</string>
+    <string name="menu_scan">Select device</string>
+    <string name="menu_stop">Stop</string>
+    <string name="menu_refresh">Refresh</string>
+    <string name="title_activity_connect">Connect</string>
+    <string name="Connect_main">Connect</string>
+    <string name="no_device">No device found</string>
+
+    <string name="device_found">Device founded</string>
+    <string name="device_connected">Connected to device</string>
+    <string name="start_record_button_description">Starts recording</string>
+    <string name="pause_record_button_description">Pauses recording</string>
+    <string name="save_record_button_description">Saves recording</string>
+    <string name="discard_record_button_description">Discards recording</string>
+    <string name="startRecord_clicked">Recording started</string>
+    <string name="startRecord_clicked_whileRecording">Recording in process</string>
+    <string name="pausedRecord_clicked">Recording paused</string>
+    <string name="saveRecord_clicked">Recording saved</string>
+    <string name="saveRecord_clicked_whileRecording">Please pause the recording first</string>
+    <string name="discardRecord_clicked">Recording discarted</string>
+    <string name="streaming_data">Streaming data</string>
+
+    <string name="label_resolution">Resolution:</string>
+
+    <string name="micro_volts">µV</string>
+    <string name="ch1">1</string>
+    <string name="ch2">2</string>
+    <string name="ch3">3</string>
+    <string name="ch4">4</string>
+    <string name="ch5">5</string>
+    <string name="ch6">6</string>
+    <string name="ch7">7</string>
+    <string name="ch8">8</string>
+    <string-array name="gains">
+        <item>0.5</item>
+        <item>1</item>
+        <item>2</item>
+        <item>4</item>
+        <item>8</item>
+        <item>16</item>
+        <item>32</item>
+        <item>64</item>
+    </string-array>
+    <string name="label_gain">Gain:</string>
+
+    <string name="no_address">No address</string>
+    <string name="ch1_label">ch1</string>
+    <string name="ch2_label">ch2</string>
+    <string name="ch3_label">ch3</string>
+    <string name="ch4_label">ch4</string>
+    <string name="ch5_label">ch5</string>
+    <string name="ch7_label">ch7</string>
+    <string name="ch8_label">ch8</string>
+    <string name="real_time_plot_label">Real-time plot</string>
+    <string name="record_label">Record</string>
+    <string name="save_label">Saving EEG session&#8230;</string>
+    <string name="ch6_label">ch6</string>
+    <string name="YAxis_label">µV</string>
+    <string name="XAxis_label">Time (s)</string>
+    <string name="traumschreiber_filter_title">Only showing Traumschreiber devices here:</string>
+
+    <string name="menu_manage_send">Share</string>
+    <string name="menu_manage_rename">Rename</string>
+    <string name="menu_manage_delete">Delete</string>
+
+    <string name="confirmation_delete">Do you want to delete</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+    <string name="dialog_title">Please confirm</string>
+
+    <string name="rename">Rename</string>
+    <string name="ask_new_name">Please enter new name for</string>
+    <string name="new_name">new_name</string>
+    <string name="rename_title">Rename EEG session</string>
+    <string name="warning_rename">There is already a session with this name. Please select another name.</string>
+    <string name="warning_select_session">Please select a session first.</string>
+    <string name="already_connected">The device is already connected</string>
+    <string name="no_connected">The device is not connected</string>
+    <string name="recording">Recording</string>
+
+    <string name="session_label_title">Session label</string>
+    <string name="enter_session_label">Please enter the session label</string>
+    <string name="example_session_label">E.g. walking, eating, sleeping, etc.</string>
+    <string name="save">Save</string>
+    <string name="default_name">Use default name</string>
+
+    <string name="select_recording">Select a session to plot</string>
+    <string name="select_tf_analysis">Select a session to analyse</string>
+
+    <string name="session_name">Name: </string>
+    <string name="session_date">Date: </string>
+    <string name="session_start_time">Start: </string>
+    <string name="session_finish_time">Finish: </string>
+
+    <string name="kbs">Kbs</string>
+    <string name="file_size">File size: </string>
+
+    <string name="speed">Speed</string>
+    <string name="speed_quarter">x0.25</string>
+    <string name="speed_half">x0.5</string>
+    <string name="speed_1">x1</string>
+    <string name="speed_2">x2</string>
+    <string name="speed_4">x4</string>
+    <string name="speed_8">x8</string>
+
+
+    <string name="Channel">Channel</string>
+    <string name="Overlap">Overlap</string>
+    <string name="warning_too_short">Your EEG session is too short to perform a TF Analysis. Please select another.</string>
+
+    <string name="clear_conversation">Clear conversation</string>
+    <string name="clear_conversation_message">Do you want to clear the conversation?</string>
+    <string name="EEGDroid">EEGDroid</string>
+    <string name="session_info">Session information:</string>
+    <string name="show_hide_channels">Show/hide channels:</string>
+    <string name="time_recording">Time of recording</string>
+
+    <string name="separator">,</string>
+    <string name="version">Version:</string>
+
+    <string name="intro">Welcome to the EEGDroid App. The goal of this App is allow you to record, plot, storage and manage EEG brain signals. With this App you are able to:</string>
+    <string name="outro">Please select one of the options or open the side menu</string>
+    <string name="bugs">Did you found a bug? Please report it to: rrojascampos@uos.de</string>
+
+    <string name="activity_name_recordEEG">Record</string>
+    <string name="activity_name_play">Play</string>
+    <string name="activity_name_manage_recordings">Manage</string>
+    <string name="activity_name_TFAnalysis">TF Analysis</string>
+    <string name="activity_name_learn">Learn</string>
+    <string name="activity_name_eeg_tutorial">EEG tutorial</string>
+    <string name="activity_name_epibot">Ask Epibot</string>
+
+
+    <string name="activity_description_recordEEG">Plot, record and save the EEG signals</string>
+    <string name="activity_description_play">Reproduce EEG sessions previously taken</string>
+    <string name="activity_description_manage">Share, rename or delete EEG sessions</string>
+    <string name="activity_description_learn">Access to reliable information about Epilepsy</string>
+    <string name="activity_description_eeg_tutorial">Learn how to operate a Traumschreiber</string>
+    <string name="activity_description_epibot">Ask all your questions about Epilepsy</string>
+
+    <string name="botsname">epibot</string>
+    <string name="username">username</string>
+
+    <string name="default_username">User</string>
+    <string name="default_userID">1220000430</string>
+    <string name="default_folder">/sessions_EEG</string>
+    <string name="default_IP">192.168.1.125</string>
+    <string name="default_port">65432</string>
+    <string name="settings_saved">Settings saved</string>
+
+    <string name="settings_username">Username to identify user:</string>
+    <string name="settings_userID">Users ID (provided by health services):</string>
+    <string name="settings_directory">Folder to save the EEG sessions in Downloads/:</string>
+    <string name="settings_IP">IP address to cast:</string>
+    <string name="settings_port">Port to cast:</string>
+
+    <string name="manage_list">List of EEG sessions found in the folder:</string>
+
+    <string name="epibot_no_internet">Talking with Epibot requires an internet connection.</string>
+
+    <string name="no_internet">No internet connection!</string>
+    <string name="access_offline">Go to offline material</string>
+    <string name="no_internet_message">You are opening the offline material. To access to a better and up-to-date material, please try again with an internet connection.</string>
+
+    <string name="confirmation_close_record"> If Record is closed, the recording will be interrupted and the saved data will be lost. Do you want to proceed?</string>
+
+    <string name="confirmation_disconnect">Do you want to disconnect the Traumschreiber?</string>
+
+    <string name="menu_record_connect">Connect</string>
+    <string name="menu_record_cast">Cast</string>
+    <string name="permission_storage">The app needs permission to access storage</string>
+
+</resources>

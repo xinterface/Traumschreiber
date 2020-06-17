@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="de.uni_osnabrueck.ikw.eegdroid">
+
+    <item
+        android:id="@+id/play"
+        android:icon="@drawable/ic_play_arrow_white_24dp"
+        android:title="Play"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/rewind"
+        android:icon="@drawable/ic_fast_rewind_white_24dp"
+        app:showAsAction="always" />
+
+
+    <item
+        android:id="@+id/action_settings"
+        android:orderInCategory="100"
+        android:title="@string/speed"
+        app:showAsAction="always">
+
+        <menu>
+
+            <item
+                android:id="@+id/speed_quarter"
+                android:title="@string/speed_quarter" />
+
+            <item
+                android:id="@+id/speed_half"
+                android:title="@string/speed_half" />
+
+            <item
+                android:id="@+id/speed_normal"
+                android:title="@string/speed_1" />
+
+            <item
+                android:id="@+id/speed_x2"
+                android:title="@string/speed_2" />
+
+            <item
+                android:id="@+id/speed_x4"
+                android:title="@string/speed_4" />
+
+            <item
+                android:id="@+id/speed_8"
+                android:title="@string/speed_8" />
+
+        </menu>
+    </item>
+</menu>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+
+    <item android:title="Utilities">
+        <menu>
+
+        <item
+            android:id="@+id/record"
+            android:icon="@drawable/ic_voicemail_black_24dp"
+            android:title="@string/activity_name_recordEEG" />
+        <item
+            android:id="@+id/display"
+            android:icon="@drawable/ic_video_library_black_24dp"
+            android:title="Play recordings" />
+        <item
+            android:id="@+id/manage"
+            android:icon="@drawable/ic_save_black_24dp"
+            android:title="Manage recordings" />
+
+        </menu>
+    </item>
+
+
+    <item android:title="Learn">
+        <menu>
+            <item
+                android:id="@+id/learn"
+                android:icon="@drawable/ic_import_contacts_black_24dp"
+                android:title="Learn about Epilepsy" />
+            <item
+                android:id="@+id/tutorial"
+                android:icon="@drawable/ic_memory_black_24dp"
+                android:title="EEG Tutorial" />
+
+            <item
+                android:id="@+id/epibot"
+                android:icon="@drawable/ic_forum_black_24dp"
+                android:title="Ask Epibot" />
+        </menu>
+    </item>
+
+    <item android:title="Extras">
+        <menu>
+            <item
+                android:id="@+id/tfanalysis"
+                android:icon="@drawable/ic_gradient_black_24dp"
+                android:title="Time-frequency analysis" />
+            <item
+                android:id="@+id/settings"
+                android:icon="@drawable/ic_menu_manage"
+                android:title="Settings" />
+
+            <item
+                android:id="@+id/info"
+                android:icon="@drawable/ic_info_black_24dp"
+                android:title="Info" />
+        </menu>
+    </item>
+
+</menu>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="de.uni_osnabrueck.ikw.eegdroid">
+    <item
+        android:id="@+id/scan"
+        android:orderInCategory="100"
+        android:title="@string/menu_scan"
+        android:icon="@drawable/ic_bluetooth_searching_white_24dp"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/disconnect"
+        android:orderInCategory="100"
+        android:title="@string/menu_disconnect"
+        android:icon="@drawable/ic_bluetooth_disabled_white_24dp"
+        app:showAsAction="always" />
+</menu>
