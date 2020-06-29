@@ -292,7 +292,8 @@ public class Record extends AppCompatActivity {
                 enableCheckboxes();
                 microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
                 displayData(microV);
-                if (plotting) {
+//                if (plotting) {
+                if (true) {
                     long plotting_elapsed = last_data - plotting_start;
                     if (plotting_elapsed > ACCUM_PLOT) {
                         addEntries(accumulated);
@@ -863,8 +864,9 @@ public class Record extends AppCompatActivity {
             mCh4.setText(values.get(3));
             mCh5.setText(values.get(4));
             mCh6.setText(values.get(5));
-            mCh7.setText(values.get(6));
-            mCh8.setText(values.get(7));
+            // Excluded for the moment because we only look at 6 channels
+//            mCh7.setText(values.get(6));
+//            mCh8.setText(values.get(7));
         }
     }
 
@@ -1011,6 +1013,7 @@ public class Record extends AppCompatActivity {
     }
 
     private void addEntries(final List<List<Float>> e_list) {
+        System.out.println("IN ADD_ENTRIES");
         final List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
         float x = 0;
         for (List<Float> f : e_list) {
@@ -1047,6 +1050,7 @@ public class Record extends AppCompatActivity {
                 LineDataSet set8 = createSet8(lineEntries8, show_ch8);
                 datasets.add(set8);
                 LineData linedata = new LineData(datasets);
+                System.out.println(linedata);
                 linedata.notifyDataChanged();
                 mChart.setData(linedata);
                 mChart.notifyDataSetChanged();
