@@ -162,6 +162,7 @@ public class Record extends AppCompatActivity {
     private BufferedReader in;
     private List<Float> microV;
     private CastThread caster;
+    private List<List<Float>> recentlyDisplayedData;
 
 
     // Code to manage Service lifecycle.
@@ -265,6 +266,7 @@ public class Record extends AppCompatActivity {
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            System.out.println("IN ON_RECEIVE");
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
                 buttons_prerecording();
@@ -284,16 +286,54 @@ public class Record extends AppCompatActivity {
 
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
 
-
+                System.out.println("DATA_AVAILABLE");
                 System.out.println(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 data_cnt++;
                 long last_data = System.currentTimeMillis();
 
                 enableCheckboxes();
                 microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
+                //=============================================================================
+                Thread generatingRubbishData;
+                generatingRubbishData = new Thread(new Runnable() {
+                    private int value = -50;
+                    private List<List<Float>> accumulated = new ArrayList<>();
+
+                    @Override
+                    public void run() {
+                        int counter = 0;
+                        while (true) {
+                            List<Float> list = new ArrayList<>();
+                            for (int i = 0; i < 6; i++) {
+                                list.add((float) 10 * (value + 5 * i));
+                            }
+                            accumulated.add(list);
+                            if (counter < 100) {
+                                value++;
+                                counter++;
+                            }
+                            else if(counter < 200) {
+                                value--;
+                                counter ++;
+                            }
+                            else {
+                                counter = 0;
+                            }
+                            addEntries(accumulated);
+                            accumulated.clear();
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                });
+                generatingRubbishData.setDaemon(true);
+                generatingRubbishData.start();
+                //=============================================================================
                 displayData(microV);
-//                if (plotting) {
-                if (true) {
+                if (plotting) {
                     long plotting_elapsed = last_data - plotting_start;
                     if (plotting_elapsed > ACCUM_PLOT) {
                         addEntries(accumulated);
@@ -324,6 +364,7 @@ public class Record extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         setContentView(R.layout.activity_record);
 
         ch1_color = ContextCompat.getColor(getApplicationContext(), R.color.aqua);
@@ -546,7 +587,7 @@ public class Record extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+//        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         if (mBluetoothLeService != null) {
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
@@ -556,12 +597,13 @@ public class Record extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        unregisterReceiver(mGattUpdateReceiver);
+//        unregisterReceiver(mGattUpdateReceiver);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(mGattUpdateReceiver);
         if (deviceConnected) {
             unbindService(mServiceConnection);
         }
@@ -1013,7 +1055,7 @@ public class Record extends AppCompatActivity {
     }
 
     private void addEntries(final List<List<Float>> e_list) {
-        System.out.println("IN ADD_ENTRIES");
+        adjustScale(e_list);
         final List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
         float x = 0;
         for (List<Float> f : e_list) {
@@ -1025,8 +1067,9 @@ public class Record extends AppCompatActivity {
             lineEntries4.add(new Entry(x, f.get(3)));
             lineEntries5.add(new Entry(x, f.get(4)));
             lineEntries6.add(new Entry(x, f.get(5)));
-            lineEntries7.add(new Entry(x, f.get(6)));
-            lineEntries8.add(new Entry(x, f.get(7)));
+            // Excluded for the moment because we only receive 6 channels
+//            lineEntries7.add(new Entry(x, f.get(6)));
+//            lineEntries8.add(new Entry(x, f.get(7)));
         }
         final float f_x = x;
         if (thread != null) thread.interrupt();
@@ -1050,7 +1093,6 @@ public class Record extends AppCompatActivity {
                 LineDataSet set8 = createSet8(lineEntries8, show_ch8);
                 datasets.add(set8);
                 LineData linedata = new LineData(datasets);
-                System.out.println(linedata);
                 linedata.notifyDataChanged();
                 mChart.setData(linedata);
                 mChart.notifyDataSetChanged();
@@ -1074,6 +1116,37 @@ public class Record extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    private void adjustScale(final List<List<Float>> e_list) {
+        if(recentlyDisplayedData == null) {
+            recentlyDisplayedData = new ArrayList<>();
+        }
+        if(recentlyDisplayedData.size() > 50 * e_list.size())
+            recentlyDisplayedData = recentlyDisplayedData.subList(e_list.size(), recentlyDisplayedData.size());
+        for(List<Float> innerList: e_list) {
+            recentlyDisplayedData.add(innerList);
+        }
+        int max = 0;
+        int min = 0;
+        for(List<Float> innerList: recentlyDisplayedData) {
+            for (Float entry: innerList) {
+                if(entry > max) {
+                    max = entry.intValue();
+                }
+                if(entry < min) {
+                    min = entry.intValue();
+                }
+            }
+        }
+        // include this part to make the axis symmetric (0 always vivible in the middle)
+//        if(max < min * -1) {
+//            max = min * -1;
+//        }
+//        min = max * -1;
+        YAxis leftAxis = mChart.getAxisLeft();
+        leftAxis.setAxisMaximum(max);
+        leftAxis.setAxisMinimum(min);
     }
 
     //Starts a recording session
