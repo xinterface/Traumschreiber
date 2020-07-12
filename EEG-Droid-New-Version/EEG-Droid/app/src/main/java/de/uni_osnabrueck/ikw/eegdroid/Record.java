@@ -278,7 +278,6 @@ public class Record extends AppCompatActivity {
                 disableCheckboxes();
 
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                System.out.println("SERVICES_DISCOVERED");
                 // Show all the supported services and characteristics on the user interface.
                 if (mNotifyCharacteristic == null) {
                     readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
@@ -286,7 +285,6 @@ public class Record extends AppCompatActivity {
 
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
 
-                System.out.println("DATA_AVAILABLE");
                 data_cnt++;
                 long last_data = System.currentTimeMillis();
 
@@ -817,14 +815,12 @@ public class Record extends AppCompatActivity {
                         // If there is an active notification on a characteristic, clear
                         // it first so it doesn't update the data field on the user interface.
                         if (mNotifyCharacteristic != null) {
-//                            mBluetoothLeService.setCharacteristicNotification( mNotifyCharacteristic, false);
                             mNotifyCharacteristic = null;
                         }
                         mBluetoothLeService.readCharacteristic(gattCharacteristic);
                     }
                     if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                         mNotifyCharacteristic = gattCharacteristic;
-//                        mBluetoothLeService.setCharacteristicNotification( gattCharacteristic, true);
                     }
                     //mBluetoothLeService.disconnect();
                     mBluetoothLeService.connect(mDeviceAddress);

@@ -290,7 +290,6 @@ public class BluetoothLeService extends Service {
      */
     public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
                                               boolean enabled) {
-        System.out.println("NOTIFY WITH BOOLEAN " + enabled);
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
@@ -301,9 +300,6 @@ public class BluetoothLeService extends Service {
         if(descriptor != null) {
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             mBluetoothGatt.writeDescriptor(descriptor);
-        }
-        else {
-            System.out.println("Descriptor is NULL");
         }
     }
 
