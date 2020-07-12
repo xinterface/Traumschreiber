@@ -266,7 +266,6 @@ public class Record extends AppCompatActivity {
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            System.out.println("IN ON_RECEIVE");
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
                 buttons_prerecording();
@@ -279,6 +278,7 @@ public class Record extends AppCompatActivity {
                 disableCheckboxes();
 
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+                System.out.println("SERVICES_DISCOVERED");
                 // Show all the supported services and characteristics on the user interface.
                 if (mNotifyCharacteristic == null) {
                     readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
@@ -287,50 +287,67 @@ public class Record extends AppCompatActivity {
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
 
                 System.out.println("DATA_AVAILABLE");
-                System.out.println(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 data_cnt++;
                 long last_data = System.currentTimeMillis();
 
                 enableCheckboxes();
                 microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
-                //=============================================================================
-                Thread generatingRubbishData;
-                generatingRubbishData = new Thread(new Runnable() {
-                    private int value = -50;
-                    private List<List<Float>> accumulated = new ArrayList<>();
 
-                    @Override
-                    public void run() {
-                        int counter = 0;
-                        while (true) {
-                            List<Float> list = new ArrayList<>();
-                            for (int i = 0; i < 6; i++) {
-                                list.add((float) 10 * (value + 5 * i));
-                            }
-                            accumulated.add(list);
-                            if (counter < 100) {
-                                value++;
-                                counter++;
-                            }
-                            else if(counter < 200) {
-                                value--;
-                                counter ++;
-                            }
-                            else {
-                                counter = 0;
-                            }
-                            addEntries(accumulated);
-                            accumulated.clear();
-                            try {
-                                Thread.sleep(100);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                });
-                generatingRubbishData.setDaemon(true);
-                generatingRubbishData.start();
+//                if(receiveLoop == null) {
+//                    receiveLoop = new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            while (true) {
+//                                readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
+//                                try {
+//                                    Thread.sleep(300);
+//                                } catch (InterruptedException e) {
+//                                    e.printStackTrace();
+//                                }
+//                            }
+//                        }
+//                    });
+//                }
+//                receiveLoop.setDaemon(true);
+//                receiveLoop.start();
+                //=============================================================================
+//                Thread generatingRubbishData;
+//                generatingRubbishData = new Thread(new Runnable() {
+//                    private int value = -50;
+//                    private List<List<Float>> accumulated = new ArrayList<>();
+//
+//                    @Override
+//                    public void run() {
+//                        int counter = 0;
+//                        while (gain_spinner.getSelectedItem().toString().equals("1")) {
+//                            List<Float> list = new ArrayList<>();
+//                            for (int i = 0; i < 6; i++) {
+//                                list.add((float) 10 * (value + 5 * i));
+//                            }
+//                            accumulated.add(list);
+//                            if (counter < 100) {
+//                                value++;
+//                                counter++;
+//                            }
+//                            else if(counter < 200) {
+//                                value--;
+//                                counter ++;
+//                            }
+//                            else {
+//                                counter = 0;
+//                            }
+//                            addEntries(accumulated);
+//                            accumulated.clear();
+//                            try {
+//                                Thread.sleep(100);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                    }
+//                });
+//                generatingRubbishData.setDaemon(true);
+//                generatingRubbishData.start();
                 //=============================================================================
                 displayData(microV);
                 if (plotting) {
@@ -765,8 +782,7 @@ public class Record extends AppCompatActivity {
                         mBluetoothLeService.writeCharacteristic(gattCharacteristic);
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                             mNotifyCharacteristic = gattCharacteristic;
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    gattCharacteristic, true);
+//                            mBluetoothLeService.setCharacteristicNotification(gattCharacteristic, true);
                         }
                     }
                 }
@@ -806,8 +822,8 @@ public class Record extends AppCompatActivity {
         // Loops through available GATT Services.
         for (BluetoothGattService gattService : gattServices) {
             uuid = gattService.getUuid().toString();
-            //if (uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) {
-            if(true) {
+            if (uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb")) {
+//            if(true) {
                 List<BluetoothGattCharacteristic> gattCharacteristics =
                         gattService.getCharacteristics();
                 // Loops through available Characteristics.
@@ -819,16 +835,14 @@ public class Record extends AppCompatActivity {
                         // If there is an active notification on a characteristic, clear
                         // it first so it doesn't update the data field on the user interface.
                         if (mNotifyCharacteristic != null) {
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    mNotifyCharacteristic, false);
+//                            mBluetoothLeService.setCharacteristicNotification( mNotifyCharacteristic, false);
                             mNotifyCharacteristic = null;
                         }
                         mBluetoothLeService.readCharacteristic(gattCharacteristic);
                     }
                     if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                         mNotifyCharacteristic = gattCharacteristic;
-                        mBluetoothLeService.setCharacteristicNotification(
-                                gattCharacteristic, true);
+//                        mBluetoothLeService.setCharacteristicNotification( gattCharacteristic, true);
                     }
                     //mBluetoothLeService.disconnect();
                     mBluetoothLeService.connect(mDeviceAddress);
@@ -1139,7 +1153,7 @@ public class Record extends AppCompatActivity {
                 }
             }
         }
-        // include this part to make the axis symmetric (0 always vivible in the middle)
+        // include this part to make the axis symmetric (0 always visible in the middle)
 //        if(max < min * -1) {
 //            max = min * -1;
 //        }
