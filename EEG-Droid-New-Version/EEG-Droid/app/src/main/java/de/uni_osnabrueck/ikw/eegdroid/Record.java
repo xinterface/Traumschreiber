@@ -292,24 +292,6 @@ public class Record extends AppCompatActivity {
 
                 enableCheckboxes();
                 microV = transData(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA));
-
-//                if(receiveLoop == null) {
-//                    receiveLoop = new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            while (true) {
-//                                readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
-//                                try {
-//                                    Thread.sleep(300);
-//                                } catch (InterruptedException e) {
-//                                    e.printStackTrace();
-//                                }
-//                            }
-//                        }
-//                    });
-//                }
-//                receiveLoop.setDaemon(true);
-//                receiveLoop.start();
                 //=============================================================================
 //                Thread generatingRubbishData;
 //                generatingRubbishData = new Thread(new Runnable() {
@@ -351,12 +333,13 @@ public class Record extends AppCompatActivity {
                 //=============================================================================
                 displayData(microV);
                 if (plotting) {
+                    accumulated.add(microV);
                     long plotting_elapsed = last_data - plotting_start;
                     if (plotting_elapsed > ACCUM_PLOT) {
                         addEntries(accumulated);
                         accumulated.clear();
                         plotting_start = System.currentTimeMillis();
-                    } else accumulated.add(microV);
+                    }
                 }
                 if (recording) storeData(microV);
                 if (start_data == 0) start_data = System.currentTimeMillis();
@@ -823,7 +806,6 @@ public class Record extends AppCompatActivity {
         for (BluetoothGattService gattService : gattServices) {
             uuid = gattService.getUuid().toString();
             if (uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb")) {
-//            if(true) {
                 List<BluetoothGattCharacteristic> gattCharacteristics =
                         gattService.getCharacteristics();
                 // Loops through available Characteristics.
@@ -1132,6 +1114,10 @@ public class Record extends AppCompatActivity {
         }
     }
 
+    /**
+     * adjusts the scale according to the maximal and minimal value of the data given in
+     * @param e_list
+     */
     private void adjustScale(final List<List<Float>> e_list) {
         if(recentlyDisplayedData == null) {
             recentlyDisplayedData = new ArrayList<>();
@@ -1144,13 +1130,18 @@ public class Record extends AppCompatActivity {
         int max = 0;
         int min = 0;
         for(List<Float> innerList: recentlyDisplayedData) {
+            int channel = 0;
             for (Float entry: innerList) {
-                if(entry > max) {
-                    max = entry.intValue();
+                if((show_ch1 && channel == 0) || (show_ch2 && channel == 1) || (show_ch3 && channel == 2) || (show_ch4 && channel == 3) ||
+                        (show_ch5 && channel == 4) || (show_ch6 && channel == 5) || (show_ch7 && channel == 6) || (show_ch8 && channel == 7)) {
+                    if (entry > max) {
+                        max = entry.intValue();
+                    }
+                    if (entry < min) {
+                        min = entry.intValue();
+                    }
                 }
-                if(entry < min) {
-                    min = entry.intValue();
-                }
+                channel ++;
             }
         }
         // include this part to make the axis symmetric (0 always visible in the middle)
@@ -1158,6 +1149,9 @@ public class Record extends AppCompatActivity {
 //            max = min * -1;
 //        }
 //        min = max * -1;
+        int range = max - min;
+        max += 0.1 * range;
+        min -= 0.1 * range;
         YAxis leftAxis = mChart.getAxisLeft();
         leftAxis.setAxisMaximum(max);
         leftAxis.setAxisMinimum(min);
