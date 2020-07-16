@@ -24,7 +24,8 @@ public class TraumschreiberService {
     // public final static String VENDOR_PREFIX = "EB:07:88:DF:29:";
     // Traumschreiber
     // public final static String VENDOR_PREFIX = "F3:C7:2B:4C:A1:";
-    public final static String VENDOR_PREFIX = "F8:";
+    public final static String VENDOR_PREFIX = "" + // changed so that Board03 is being detected as well 
+            "";
     // Names chosen according to the python tflow_edge Traumschreiber.py
     public final static UUID BIOSIGNALS_UUID = UUID.fromString("faa7b588-19e5-f590-0545-c99f193c5c3e");
     public final static UUID LEDS_UUID = UUID.fromString("fcbea85a-4d87-18a2-2141-0d8d2437c0a4");
