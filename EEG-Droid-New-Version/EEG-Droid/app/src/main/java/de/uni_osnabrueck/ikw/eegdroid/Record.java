@@ -1112,23 +1112,24 @@ public class Record extends AppCompatActivity {
 
     /**
      * adjusts the scale according to the maximal and minimal value of the data given in
+     *
      * @param e_list
      */
     private void adjustScale(final List<List<Float>> e_list) {
-        if(recentlyDisplayedData == null) {
+        if (recentlyDisplayedData == null) {
             recentlyDisplayedData = new ArrayList<>();
         }
-        if(recentlyDisplayedData.size() > 50 * e_list.size())
+        if (recentlyDisplayedData.size() > 50 * e_list.size())
             recentlyDisplayedData = recentlyDisplayedData.subList(e_list.size(), recentlyDisplayedData.size());
-        for(List<Float> innerList: e_list) {
+        for (List<Float> innerList : e_list) {
             recentlyDisplayedData.add(innerList);
         }
         int max = 0;
         int min = 0;
-        for(List<Float> innerList: recentlyDisplayedData) {
+        for (List<Float> innerList : recentlyDisplayedData) {
             int channel = 0;
-            for (Float entry: innerList) {
-                if((show_ch1 && channel == 0) || (show_ch2 && channel == 1) || (show_ch3 && channel == 2) || (show_ch4 && channel == 3) ||
+            for (Float entry : innerList) {
+                if ((show_ch1 && channel == 0) || (show_ch2 && channel == 1) || (show_ch3 && channel == 2) || (show_ch4 && channel == 3) ||
                         (show_ch5 && channel == 4) || (show_ch6 && channel == 5) || (show_ch7 && channel == 6) || (show_ch8 && channel == 7)) {
                     if (entry > max) {
                         max = entry.intValue();
@@ -1137,7 +1138,7 @@ public class Record extends AppCompatActivity {
                         min = entry.intValue();
                     }
                 }
-                channel ++;
+                channel++;
             }
         }
         // include this part to make the axis symmetric (0 always visible in the middle)
