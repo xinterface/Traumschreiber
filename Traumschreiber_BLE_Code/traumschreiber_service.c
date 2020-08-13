@@ -73,7 +73,11 @@ void ble_traum_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 			break;
                 case BLE_GATTS_EVT_WRITE:
   //                      NRF_LOG_INFO(" BLE WRITE EVENT %i,%02x", p_ble_evt->evt.gatts_evt.params.write.len, p_ble_evt->evt.gatts_evt.params.write.data[0]);
-                        spi_ble_notify((uint16_t)*p_ble_evt->evt.gatts_evt.params.write.data);
+                        if (p_ble_evt->evt.gatts_evt.params.hvc.handle == p_traum_service->char_conf_handle.value_handle) {
+                            spi_config_update((uint8_t)*p_ble_evt->evt.gatts_evt.params.write.data);
+                        } else {
+                            spi_ble_notify((uint16_t)*p_ble_evt->evt.gatts_evt.params.write.data);
+                        }
                         break;
                 case BLE_GATTS_EVT_HVN_TX_COMPLETE:                   //when data was send
 //                    NRF_LOG_INFO(" HVN_TX_COMPLETE c:%i", p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
@@ -177,6 +181,81 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
 }
 
 
+/**@brief Function for adding our new config characterstic to "Our service" that we initiated in the previous tutorial. 
+ *
+ * @param[in]   p_our_service        Our Service structure.
+ *
+ */
+static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t init_value, uint16_t ble_uuid)
+{
+   
+    // OUR_JOB: Step 2.A, Add a custom characteristic UUID
+	uint32_t            err_code;
+	ble_uuid_t          char_uuid;
+	//ble_uuid128_t       base_uuid = BLE_UUID_TRAUM_BASE_UUID;
+	//char_uuid.uuid      = BLE_UUID_TRAUM_CHARACTERISTC_UUID;
+	//err_code = sd_ble_uuid_vs_add(&base_uuid, &char_uuid.type);
+	//APP_ERROR_CHECK(err_code); 
+	
+	BLE_UUID_BLE_ASSIGN(char_uuid, ble_uuid);
+
+    
+    // OUR_JOB: Step 2.F Add read/write properties to our characteristic
+    ble_gatts_char_md_t char_md;
+    memset(&char_md, 0, sizeof(char_md));
+	char_md.char_props.read = 1;
+	char_md.char_props.write = 1;
+
+       
+    // OUR_JOB: Step 3.A, Configuring Client Characteristic Configuration Descriptor metadata and add to char_md structure
+    ble_gatts_attr_md_t cccd_md;
+    memset(&cccd_md, 0, sizeof(cccd_md));
+	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
+	cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
+	char_md.p_cccd_md           = &cccd_md;
+	char_md.char_props.notify   = 1;
+	//char_md.char_props.indicate   = 0; //has no effect...
+
+   // OUR_JOB: Step 2.B, Configure the attribute metadata
+    ble_gatts_attr_md_t attr_md;
+    memset(&attr_md, 0, sizeof(attr_md));  
+	attr_md.vloc        = BLE_GATTS_VLOC_STACK;
+	
+    
+    
+    // OUR_JOB: Step 2.G, Set read/write security levels to our characteristic
+	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    
+	
+   // OUR_JOB: Step 2.C, Configure the characteristic value attribute
+    ble_gatts_attr_t    attr_char_value;
+    memset(&attr_char_value, 0, sizeof(attr_char_value));
+	attr_char_value.p_uuid      = &char_uuid;
+	attr_char_value.p_attr_md   = &attr_md;
+
+
+    
+    // OUR_JOB: Step 2.H, Set characteristic length in number of bytes
+	attr_char_value.max_len     = CONF_CHAR_VALUE_LENGTH;
+	attr_char_value.init_len    = sizeof(init_value);
+	//uint8_t value[2]            = {0};
+	attr_char_value.p_value     = &init_value;
+	
+    // OUR_JOB: Step 2.E, Add our new characteristic to the service
+	err_code = sd_ble_gatts_characteristic_add(p_traum_service->service_handle,
+									   &char_md,
+									   &attr_char_value,
+									   char_handle);
+    APP_ERROR_CHECK(err_code);
+
+        
+    
+    return NRF_SUCCESS;
+}
+
+
 /**@brief Function for initiating our new service.
  *
  * @param[in]   p_our_service        Our Service structure.
@@ -184,7 +263,7 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
  */
 void traum_service_init(ble_traum_t * p_traum_service)
 {
-
+    
     // STEP 3: Declare 16 bit service and 128 bit base UUIDs and add them to BLE stack table     
         uint32_t		err_code;
 	ble_uuid_t		service_uuid;
@@ -208,6 +287,10 @@ void traum_service_init(ble_traum_t * p_traum_service)
 	// OUR_JOB: Call the function our_char_add() to add our new characteristic to the service.
         uint8_t value[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
         traum_char_add(p_traum_service, &p_traum_service->char_base_handle, value, BLE_UUID_TRAUM_BASE_CHARACTERISTC_UUID);
+        
+        //add characteristic for config
+        uint8_t value_conf = 0x00;
+        traum_conf_char_add(p_traum_service, &p_traum_service->char_conf_handle, value_conf, BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID);
  
 	
     // Print messages to Segger Real Time Terminal

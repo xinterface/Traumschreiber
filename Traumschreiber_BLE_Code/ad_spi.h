@@ -58,7 +58,7 @@
 #include "traumschreiber_service.h"
 
 
-//SPI pins for the three ADs
+
 #define SPI_0_DRDY 17 // connected to \DRDY-signal from AD0
 #define SPI_0_SCLK  4 // connected to SCLK-signal from AD0
 #define SPI_0_CS    6 // connected to CS-signal from AD0
@@ -103,23 +103,24 @@ static const uint8_t m_rlength =  sizeof(m_rx_buf);        /**< RX Buffer length
 #define ADREG_SRC_MODE_UPDATE_CLEAR {0x64, 0x00} //write signal for register with standart settings
 #define ADREG_SRC_MODE_UPDATE_SET   {0x64, 0x01} //write signal for register with update instruction
 
+#define ADREG_CHANNEL_CONFIG {0x00, 0x00} //write signal for channel 0 with standart settings
+#define ADREG_CHANNEL_CONFIG_GAIN_MASK 0xC0 //mask to code gain into channel config
 
 static uint8_t triggerSkipCounter = 0; //counter used to skip trigger events so log buffer does not overflow
 static uint8_t triggerSkipCounterMax = 0; // how many events are skipped (+1)
 
 static uint16_t packetSkipCounter = 0;
 
-
 //SPI data recieve ring buffer
 #define SPI_DATA_BUFFER_LENGTH      SPI_READ_LENGTH*8
 #define SPI_DATA_BUFFER_WRITE_SIZE  SPI_READ_LENGTH
 #define SPI_DATA_BUFFER_READ_SIZE   TRAUM_SERVICE_VALUE_LENGTH
-//static uint8_t  spi_read_buf[SPI_DATA_BUFFER_LENGTH];    /**< RX buffer. */
-//static const uint16_t  srb_buffer_length    = SPI_DATA_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
-//static uint16_t        srb_write_position  = 0;
-//static const uint16_t  srb_packet_size     = SPI_READ_LENGTH; //needed because somehow constants can't be used in calculations...
-//static uint16_t        srb_read_position   = 0;
-//static uint16_t        srb_capacity_used   = 0;
+static uint8_t  spi_read_buf[SPI_DATA_BUFFER_LENGTH];    /**< RX buffer. */
+static const uint16_t  srb_buffer_length    = SPI_DATA_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        srb_write_position  = 0;
+static const uint16_t  srb_packet_size     = SPI_READ_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        srb_read_position   = 0;
+static uint16_t        srb_capacity_used   = 0;
 
 //BLE data send ring buffer
 #define SPI_BLE_BUFFER_LENGTH      SPI_DATA_BUFFER_READ_SIZE*12
@@ -130,7 +131,7 @@ static const uint16_t  stb_packet_size     = SPI_DATA_BUFFER_READ_SIZE; //needed
 static uint16_t        stb_read_position   = 0;
 static uint16_t        stb_capacity_used   = 0;
 
-//compression, old, not yet cleaned up
+//compression
 static int32_t  spi_last_abs_values[SPI_READ_CHANNEL_NUMBER];
 static int32_t  spi_new_diff_values[SPI_READ_CHANNEL_NUMBER];
 static uint8_t  recieved_packets_counter      = 0;
@@ -149,8 +150,11 @@ static uint16_t sob_read_position   = 0; //number of bits
 
 //Debug Data Generation
 #define SPI_DATA_GEN_FLAG   0
+static uint8_t  spi_data_gen_enabled = SPI_DATA_GEN_FLAG;
+static uint8_t  spi_data_gen_use_half = 0;
 #define SPI_DATA_GEN_BASE   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} //default read signal for 32 Bytes
-static uint8_t  spi_data_gen_buf[8*4] = SPI_DATA_GEN_BASE;
+#define SPI_DATA_GEN_BASE_32   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+static uint32_t  spi_data_gen_buf[8] = SPI_DATA_GEN_BASE_32;
 
 
 // timer event handler
@@ -197,7 +201,7 @@ uint8_t* spi_read_data(void);
 void spi_data_sent(void);
 void spi_ble_sent(uint8_t count);
 
-
+void spi_config_update(uint8_t value);
 void spi_init(void);
 
 

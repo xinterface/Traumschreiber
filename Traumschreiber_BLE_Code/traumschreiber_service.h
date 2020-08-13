@@ -49,9 +49,10 @@
 #define BLE_UUID_TRAUM_SERVICE                0x0EE6 // Just a random, but recognizable value
 
 #define BLE_UUID_TRAUM_BASE_CHARACTERISTC_UUID     0xE617 // Just a random, but recognizable value
-//#define BLE_UUID_TRAUM_PLUS_CHARACTERISTC_UUID     0xD017 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID     0xECC0 // Just a random, but recognizable value
 
 #define TRAUM_SERVICE_VALUE_LENGTH  20
+#define CONF_CHAR_VALUE_LENGTH  1
 
 
 
@@ -67,7 +68,7 @@ typedef struct
     uint16_t    conn_handle; 
 	uint16_t    service_handle;     /**< Handle of Our Service (as provided by the BLE stack). */
 	ble_gatts_char_handles_t    char_base_handle;
-	ble_gatts_char_handles_t    char_plus_handle;
+	ble_gatts_char_handles_t    char_conf_handle;
 }ble_traum_t;
 
 /**@brief Function for handling BLE Stack events related to our service and characteristic.

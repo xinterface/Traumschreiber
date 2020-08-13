@@ -53,7 +53,6 @@
 #include "app_timer.h"
 #include "nrf_drv_timer.h"
 #include "traumschreiber_service.h"
-#include "Queue.h"
 
 
 // timer
@@ -62,12 +61,14 @@ APP_TIMER_DEF(m_spi_char_timer_id);
 
 // data generation timer
 APP_TIMER_DEF(m_spi_dg_timer_id);
-#define SPI_DG_TIMER_INTERVAL     APP_TIMER_TICKS(4) // 100 ms intervals
+#define SPI_DG_TIMER_INTERVAL     APP_TIMER_TICKS(4) // 1000 ms intervals
 
 //ble service handle. needs to be given to traum_eeg_update_characteristic.
 ble_traum_t * spi_traum_service;
 bool spi_ble_connected_flag = false;
 bool spi_ble_notification_flag = false;
+
+uint8_t spi_bletrans_fullpackage_flag = 0; //it stores the packetnumber of the full-transmission-packages (if not active it has value 0)
 
 
 
@@ -88,12 +89,27 @@ static void spi_data_generation_timeout_handler(void * p_context)
     //only process data if there is a BLE-connection and someone listens for the data
     if (spi_ble_connected_flag && spi_ble_notification_flag) {
         
-
-        for(int c = 0; c <  SPI_READ_CHANNEL_NUMBER; c++){
-          spi_data_gen_buf[c*4+3] += c + 1;
-          AddToQueue(c, *(uint32_t*)(&spi_data_gen_buf[c * SPI_READ_PER_CHANNEL]));
+        for(int8_t i = 0;i < 8; i++) {
+            //spi_data_gen_buf[i*4+3] += i + 1;
         }
-        UpdateQueue();
+    
+        //if there is a spi_read_buffer-overflow, drop oldest package (and therefor make space for new one)
+        if (srb_capacity_used + srb_packet_size > srb_buffer_length) {
+            int pre = srb_read_position;
+            srb_read_position = (srb_read_position + srb_packet_size) % srb_buffer_length;
+            //it's 'srb_packet_size' because we need to skip a full data set to keep integrity of data
+            srb_capacity_used -= srb_packet_size;
+            //NRF_LOG_INFO(" W skip: %i -> %i", pre, srb_read_position);
+            packetSkipCounter += 1;
+        }
+
+        //copy new data to spi_read_buffer and update buffer-pointers
+        memcpy(&spi_read_buf[srb_write_position], &spi_data_gen_buf, srb_packet_size);
+        NRF_LOG_INFO("counter: %i, read:%i%i%i%i", spi_data_gen_buf[1],spi_read_buf[srb_write_position+0],spi_read_buf[srb_write_position+1],spi_read_buf[srb_write_position+2],spi_read_buf[srb_write_position+3]);
+
+        srb_write_position = (srb_write_position + srb_packet_size) % srb_buffer_length;
+        srb_capacity_used += srb_packet_size;
+
         
         //call BLE send function to try to send the received data
         traum_eeg_data_characteristic_update(spi_traum_service);
@@ -160,12 +176,16 @@ static void gpio_init(void)
     nrf_drv_gpiote_in_config_t in_config = GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
   //  in_config.pull = NRF_GPIO_PIN_PULLUP;
     
-    if (!SPI_DATA_GEN_FLAG) { //if we are not using the data generator, set spi trigger
+    //if (!SPI_DATA_GEN_FLAG) { //if we are not using the data generator, set spi trigger
+    //commented out the if because the 'enable' below should do the trick
         err_code = nrf_drv_gpiote_in_init(SPI_0_DRDY, &in_config, spi_trigger_pin_handler);
         APP_ERROR_CHECK(err_code);
-    }
+    //}
 
-    nrf_drv_gpiote_in_event_enable(SPI_0_DRDY, true);
+    //the if is commented out, because we use the trigger either way
+    //if (!SPI_DATA_GEN_FLAG) { //if we are not using the data generator, enable spi trigger
+        nrf_drv_gpiote_in_event_enable(SPI_0_DRDY, true);
+    //}
 }
 
 
@@ -180,17 +200,47 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
     //only process data if there is a BLE-connection and someone listens for the data
     if (spi_ble_connected_flag && spi_ble_notification_flag) {
         //nrf_gpio_pin_clear(20); //LED4
+        //nrf_gpio_pin_clear(19); //LED3
+        //nrf_gpio_pin_clear(18); //LED2
     
-        for(int c = 0; c <  SPI_READ_CHANNEL_NUMBER; c++){
-          AddToQueue(c, *(uint32_t*)(&m_rx_buf[c * SPI_READ_PER_CHANNEL]));
+        //if there is a spi_read_buffer-overflow, drop oldest package (and therefor make space for new one)
+        if (srb_capacity_used + srb_packet_size > srb_buffer_length) {
+            int pre = srb_read_position;
+            srb_read_position = (srb_read_position + srb_packet_size) % srb_buffer_length;
+            //it's 'srb_packet_size' because we need to skip a full data set to keep integrity of data
+            srb_capacity_used -= srb_packet_size;
+            //NRF_LOG_INFO(" W skip: %i -> %i", pre, srb_read_position);
+            packetSkipCounter += 1;
         }
-        UpdateQueue();
+
+
+        if (spi_data_gen_enabled) {
+            for(int8_t i = 0;i < 8; i++) {
+                spi_data_gen_buf[i] = (spi_data_gen_buf[i] + 0x010101) & 0xFFFFFF;
+            }
+
+            //copy new data to spi_read_buffer from generation buffer
+            if (spi_data_gen_use_half) {
+                memcpy(&spi_read_buf[srb_write_position], &m_rx_buf, srb_packet_size/2);
+                memcpy(&spi_read_buf[srb_write_position+srb_packet_size/2], &spi_data_gen_buf, srb_packet_size/2);
+            } else {
+                memcpy(&spi_read_buf[srb_write_position], &spi_data_gen_buf, srb_packet_size);
+            }
+        } else {
+        
+            //copy new data to spi_read_buffer from ad read buffer
+            memcpy(&spi_read_buf[srb_write_position], &m_rx_buf, srb_packet_size);
+        }
+        // and update buffer-pointers
+        srb_write_position = (srb_write_position + srb_packet_size) % srb_buffer_length;
+        srb_capacity_used += srb_packet_size;
 
         //call BLE send function to try to send the received data
         traum_eeg_data_characteristic_update(spi_traum_service);
             
 
         //nrf_gpio_pin_set(20); //LED4
+        //nrf_gpio_pin_set(18); //LED2
     }
 }
 
@@ -212,6 +262,14 @@ void spi_ble_disconnect()
 //keeping track whether BLE stack has notifications enabled.
 void spi_ble_notify(uint16_t notify)
 {
+    //uint32_t cccd_value; //should be 1 or 2 (but actually isn't. though it was 0 or 1 once...
+    //// Pupulate ble_gatts_value_t structure to hold received data and metadata.
+    //ble_gatts_value_t cccd_data;
+    //cccd_data.len = sizeof(uint32_t);
+    //cccd_data.offset = 0;
+    //cccd_data.p_value = (uint8_t*)&cccd_value;
+    //sd_ble_gatts_value_get(p_traum_service->conn_handle, p_traum_service->char_base_handle.cccd_handle, &cccd_data);
+    
     if (notify == 1) {
         spi_ble_notification_flag = true;
     } else {
@@ -227,8 +285,8 @@ void spi_ble_notify(uint16_t notify)
  */
 bool spi_new_data(void)
 {
-    //Check if new data in Queue
-    if(EncodedDataAvailable()) {
+    //if there is data available in spi_read_buffer or full packets are currently being transmitted
+    if (srb_capacity_used >= srb_packet_size || spi_bletrans_fullpackage_flag != 0) {
         //and if there is space in spi_send_buffer
         if (stb_capacity_used + stb_packet_size >= stb_buffer_length) {
             NRF_LOG_INFO(" stb full (c:%i)", stb_capacity_used);
@@ -246,8 +304,44 @@ bool spi_new_data(void)
  * should probably be called spi_get_(send)_data
  */
 uint8_t* spi_read_data(void)
-{
-    EncodedData(&spi_send_buf[stb_write_position]);
+{    
+    //resetting the send buffer
+    memset(&spi_send_buf[stb_write_position], 0, stb_packet_size);
+
+
+    if (srb_read_position + srb_packet_size > srb_buffer_length) {
+    //this can never occur! but it's a good security check!
+        NRF_LOG_INFO(" spi_read_data overflow");
+    } else {
+        //old solution
+        //memcpy(&spi_send_buf[stb_write_position], &spi_read_buf[srb_read_position], stb_packet_size);
+        
+            int8_t offset = 0;
+            int8_t index = 1;
+            int8_t a;
+
+            //for each channel, fetch current value and calculate difference to the last one
+            for(int i = 0; i < SPI_READ_CHANNEL_NUMBER-2;i++) { //only 6 channels!
+                offset++; //skipp first byte per channel
+                for(a = 0;a<3;a++){
+                    spi_send_buf[stb_write_position+index] = spi_read_buf[srb_read_position+offset];
+                    index++;
+                    offset++;
+                }
+            }
+        
+
+        //fill in header
+        //4 bits for packet ID, 1 bit error, 3 bits value length (with offset spi_min_bits_per_channel)
+        spi_send_buf[stb_write_position] = (uint8_t)((recieved_packets_counter << 4) | (0 << 3) | (7));
+        recieved_packets_counter = (recieved_packets_counter + 1) % 16;
+
+    }
+//    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) tmp_buf, *(uint32_t*) tmp_buf, srb_read_position, srb_capacity_used);
+NRF_LOG_INFO(" R: %08x %08x", *(uint32_t*) &spi_read_buf[srb_read_position], *(uint32_t*) &spi_read_buf[srb_read_position+4]);
+NRF_LOG_INFO(" S: %08x %08x", *(uint32_t*) &spi_send_buf[stb_write_position], *(uint32_t*) &spi_send_buf[stb_write_position+4]);
+    //    
+
     return &spi_send_buf[stb_write_position];
 }
 
@@ -259,7 +353,13 @@ uint8_t* spi_read_data(void)
 //update buffer read pointer and capacity
 void spi_data_sent()
 {
-
+    //the if handels that during full packet transmission the read buffer is only used once
+    //    the if will only be triggered once during that transmission (after last packet)
+    //    for all other differential packets it will be normally triggered
+    if (spi_bletrans_fullpackage_flag == 0) {
+        srb_read_position = (srb_read_position + srb_packet_size) % srb_buffer_length;
+        srb_capacity_used -= srb_packet_size;
+    }
     stb_write_position = (stb_write_position + stb_packet_size) % stb_buffer_length;
     stb_capacity_used += stb_packet_size;
 //    NRF_LOG_INFO(" R pos: %i (c:%i)", srb_read_position, srb_capacity_used);
@@ -276,6 +376,64 @@ void spi_ble_sent(uint8_t count)
         //NRF_LOG_INFO(" R pos: %i", srb_read_position);
     }
 }
+
+
+
+void spi_config_update(uint8_t value)
+{
+
+    NRF_LOG_INFO("config update");
+    NRF_LOG_FLUSH();
+
+    //stopping data generation timer
+    app_timer_stop(m_spi_dg_timer_id);
+    //disabling data_ready-interrupt
+    nrf_drv_gpiote_in_event_disable(SPI_0_DRDY);
+
+    
+    NRF_LOG_INFO("spi conf 01");
+    NRF_LOG_FLUSH();
+    //writing gain level to channel registers
+    //uint8_t tx_buf[] = ADREG_CHANNEL_CONFIG; //len = 2
+    uint8_t cc = ADREG_CHANNEL_CONFIG_GAIN_MASK & (value << 0);
+    uint8_t tx_buf[] = {0x00, cc, 0x01, cc, 0x02, cc, 0x03, cc, 0x04, cc, 0x05, cc, 0x06, cc, 0x07, cc,}; //len 16
+    uint8_t tx_buf_len = 16;
+    //tx_buf[1] = tx_buf[1] | (ADREG_CHANNEL_CONFIG_GAIN_MASK & (value << 0)); //
+    
+    NRF_LOG_INFO("spi conf 02");
+    NRF_LOG_FLUSH();
+   // for(uint8_t channel = 0;channel < 8;channel += 1) {
+   //     tx_buf[0] = channel; //
+        uint32_t err_code = nrf_drv_spi_transfer(&spi, tx_buf, tx_buf_len, m_rx_buf, tx_buf_len);
+        
+        NRF_LOG_INFO("spi conf 02.1: %04x", err_code);
+        NRF_LOG_FLUSH();
+        APP_ERROR_CHECK(err_code);
+    //    nrf_delay_ms(50);
+    //}
+
+    NRF_LOG_INFO("spi conf 03");
+    NRF_LOG_FLUSH();
+    
+    spi_data_gen_enabled = value & 0x20;
+    spi_data_gen_use_half = value & 0x10;
+    //starting data generation timer if set
+    if (spi_data_gen_enabled) {
+        NRF_LOG_INFO("SPI data generation start up.");
+        //uint8_t err_code = app_timer_start(m_spi_dg_timer_id, SPI_DG_TIMER_INTERVAL, NULL);
+        //APP_ERROR_CHECK(err_code);
+        nrf_drv_gpiote_in_event_enable(SPI_0_DRDY, true); //do this in any case, because generation is now ad triggered
+    } else { //els enable data_ready-interrupt
+        nrf_drv_gpiote_in_event_enable(SPI_0_DRDY, true);
+    }
+
+    NRF_LOG_INFO("SPI config updated.");
+    NRF_LOG_FLUSH();
+
+}
+
+
+
 
 void spi_init(void)
 {
@@ -325,10 +483,10 @@ void spi_init(void)
     //writing in General User Config to enable AD for data output via SPI
     uint8_t tx_buf[] = ADREG_GENERAL_USER_CONFIG_3; //len = 2
     tx_buf_len = 2;
-    //NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf); 
+    NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf); 
     NRF_LOG_FLUSH(); 
     tx_buf[1] = tx_buf[1] | ADREG_GENERAL_USER_CONFIG_3_BYTE_OR; //##commented out while testing    
-    //NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf);
+    NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf);
     APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, tx_buf, tx_buf_len, m_rx_buf, tx_buf_len));
    
     NRF_LOG_FLUSH();
@@ -355,15 +513,16 @@ void spi_init(void)
     gpio_init();
 
     
+    //define data generation timer
+    APP_ERROR_CHECK(app_timer_create(&m_spi_dg_timer_id, APP_TIMER_MODE_REPEATED, spi_data_generation_timeout_handler));
     //starting data generation timer
-    if (SPI_DATA_GEN_FLAG) {
+    if (spi_data_gen_enabled) {
         NRF_LOG_INFO("SPI data generation start up.");
-        APP_ERROR_CHECK(app_timer_create(&m_spi_dg_timer_id, APP_TIMER_MODE_REPEATED, spi_data_generation_timeout_handler));
-        err_code = app_timer_start(m_spi_dg_timer_id, SPI_DG_TIMER_INTERVAL, NULL);
-        APP_ERROR_CHECK(err_code);
+        //err_code = app_timer_start(m_spi_dg_timer_id, SPI_DG_TIMER_INTERVAL, NULL);
+        //APP_ERROR_CHECK(err_code);
     }
 
-    NRF_LOG_INFO("SPI started.");
+    NRF_LOG_INFO("SPI example started.");
     NRF_LOG_FLUSH();
 
 }
