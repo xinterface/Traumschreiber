@@ -7,22 +7,23 @@ works:
 		transfering to second ring buffer
 		in 20 Byte packets
 		trying to fill send buffer on each recieved AD packet or if data was sent (via BLE)
-	compression added
-		sending first 6 channels in full width
+	'compression' added
+		sending first 6 channels in full width, dropping the last two
 	data generation added
-		can be toggeled via flag. this then deactivates spi
+		can be toggeled via flag.
+		data gets generated every time a sample from the AD's came in
+		it is possible to have generated and sampled data (see below)
 	configuration characteristic, 1 Byte
-		xxoo oooo: gain
-		ooxo oooo: generate data
+		xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
+		ooxo oooo: generate data (0: off, 1: on)
+		ooox oooo: if set, replace half of the generated data by real data (only works together with the option above, obviously)
 		
 		
 constraints:
-	8 channels
+	8 channels (from one AD)
+		due to 'compression', sending first 6 channels in full width
 	datarate: according to incoming AD packets (~250Hz)
 	no error output yet
 
-comments:
-	sending first 6 channels in full width
-	
 	
 

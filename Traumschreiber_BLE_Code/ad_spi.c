@@ -480,6 +480,16 @@ void spi_init(void)
     tx_buf_len = 2;
     APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, tx_buf_src_c, tx_buf_len, m_rx_buf, tx_buf_len));
 
+    //add GUC1 change
+    //writing in General User Config 1 to enable internal reference
+    uint8_t tx_buf1[] = ADREG_GENERAL_USER_CONFIG_1; //len = 2
+    tx_buf_len = 2;
+    NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf1); 
+    NRF_LOG_FLUSH(); 
+    tx_buf1[1] = tx_buf1[1] | ADREG_GENERAL_USER_CONFIG_1_BYTE_OR; //##commented out while testing    
+    NRF_LOG_INFO(" R_tx: %04x", *(uint16_t*) tx_buf1);
+    APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, tx_buf1, tx_buf_len, m_rx_buf, tx_buf_len));
+
     //writing in General User Config to enable AD for data output via SPI
     uint8_t tx_buf[] = ADREG_GENERAL_USER_CONFIG_3; //len = 2
     tx_buf_len = 2;

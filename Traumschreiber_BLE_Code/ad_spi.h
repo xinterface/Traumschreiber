@@ -95,6 +95,7 @@ static const uint8_t m_rlength =  sizeof(m_rx_buf);        /**< RX Buffer length
 #define ADREG_GENERAL_USER_CONFIG_2 {0x12, 0x09} //write signal for register with standart settings
 #define ADREG_GENERAL_USER_CONFIG_3 {0x13, 0x80} //write signal for register with standart settings
 #define ADREG_GENERAL_USER_CONFIG_3_BYTE_OR 0x10 //Byte for or operation with GUC3-Register to set Bit#4
+#define ADREG_GENERAL_USER_CONFIG_1_BYTE_OR 0x10 //Byte for or operation with GUC1-Register to set Bit#4
 
 #define ADREG_DECIMATION_RATE_N     {0x60, 0x00, 0x61, 0x80} //write signal for register with standart settings
 #define ADREG_DECIMATION_RATE_N_MOD {0x60, 0x08, 0x61, 0x00} //write signal for register, ODR = 250Hz (should, but actually seems to be 500Hz)

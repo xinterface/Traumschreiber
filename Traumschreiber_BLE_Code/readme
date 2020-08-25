@@ -21,9 +21,9 @@ traumschreiber_service.c/.h
 ad_spi.c/.h
 
 to programm the Traumschreiber:
-- compile the project (I use the key F7, should show two partly green bars on the bottom when finished)
+- compile the project in SES (I use the key F7, should show two partly green bars on the bottom when finished)
 - connect the programming board and connect the Traumschreiber to that one with the grey 10-Pin-Connector
 - switch the Traumschreiber on!!!!
 - use 'Target' -> 'Connect J-Link'
 - use 'Target' -> 'Download ble_app_...'
-during programming the Traumschreiber LED should be off. when finished it should be on. 
+during programming the Traumschreiber LEDs should be off. when finished it should be on. 
