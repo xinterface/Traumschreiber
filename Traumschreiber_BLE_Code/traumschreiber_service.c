@@ -58,8 +58,7 @@ bool ble_traum_char_update_semaphore = true;
 void ble_traum_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 {
   	ble_traum_t * p_traum_service =(ble_traum_t *) p_context;  
-		// OUR_JOB: Step 3.D Implement switch case handling BLE events related to our service. 
-//	NRF_LOG_INFO(" BLE EVENT HANDLER: %i", p_ble_evt->header.evt_id);
+		///	NRF_LOG_INFO(" BLE EVENT HANDLER: %i", p_ble_evt->header.evt_id);
 
 	switch (p_ble_evt->header.evt_id)
 	{
@@ -74,19 +73,24 @@ void ble_traum_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
                 case BLE_GATTS_EVT_WRITE:
   //                      NRF_LOG_INFO(" BLE WRITE EVENT %i,%02x", p_ble_evt->evt.gatts_evt.params.write.len, p_ble_evt->evt.gatts_evt.params.write.data[0]);
                         if (p_ble_evt->evt.gatts_evt.params.hvc.handle == p_traum_service->char_conf_handle.value_handle) {
-                            spi_config_update((uint8_t)*p_ble_evt->evt.gatts_evt.params.write.data);
+                            spi_config_update(p_ble_evt->evt.gatts_evt.params.write.data);//(uint8_t)*
                         } else {
                             spi_ble_notify((uint16_t)*p_ble_evt->evt.gatts_evt.params.write.data);
                         }
                         break;
                 case BLE_GATTS_EVT_HVN_TX_COMPLETE:                   //when data was send
-//                    NRF_LOG_INFO(" HVN_TX_COMPLETE c:%i", p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
-                    //nrf_gpio_pin_clear(18); //LED2
-                    spi_ble_sent(p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
-                    traum_eeg_data_characteristic_update(p_traum_service);//try to send new data
-                    //nrf_gpio_pin_set(18); //LED2
+                    //NRF_LOG_INFO(" HVN_TX_COMPLETE c:%i", p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
+                    //NRF_LOG_INFO(" HVN: %i == %i", p_ble_evt->evt.gatts_evt.params.hvc.handle, p_traum_service->char_base_handle.value_handle);
+                    
+                    //this check does not work, because the p_ble_evt does not contain the handle information
+                    //it is kept (commented out) because it would be a useful check and might be available in future sdk's
+                    //until then spi_ble_sent() keeps track of connection/notification status as replacement
+                    //if (p_ble_evt->evt.gatts_evt.params.hvc.handle == p_traum_service->char_base_handle.value_handle) {
+                        spi_ble_sent(p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
+                    //    traum_eeg_data_characteristic_update(p_traum_service);//try to send new data
+                    //}
                     break;
-                //case BLE_EVT_TX_COMPLETE //maybe need it with notification (instead of indication)
+                //case BLE_EVT_TX_COMPLETE //would be needed if indication was used (instead of BLE_GATTS_EVT_HVN_TX_COMPLETE)
 	default:
 		// No implementation needed.
 		break;
@@ -186,7 +190,7 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
  * @param[in]   p_our_service        Our Service structure.
  *
  */
-static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t init_value, uint16_t ble_uuid)
+static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t * init_value, uint16_t ble_uuid)
 {
    
     // OUR_JOB: Step 2.A, Add a custom characteristic UUID
@@ -239,9 +243,9 @@ static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_cha
     
     // OUR_JOB: Step 2.H, Set characteristic length in number of bytes
 	attr_char_value.max_len     = CONF_CHAR_VALUE_LENGTH;
-	attr_char_value.init_len    = sizeof(init_value);
+	attr_char_value.init_len    = CONF_CHAR_VALUE_LENGTH;//sizeof(init_value);
 	//uint8_t value[2]            = {0};
-	attr_char_value.p_value     = &init_value;
+	attr_char_value.p_value     = init_value;
 	
     // OUR_JOB: Step 2.E, Add our new characteristic to the service
 	err_code = sd_ble_gatts_characteristic_add(p_traum_service->service_handle,
@@ -283,13 +287,15 @@ void traum_service_init(ble_traum_t * p_traum_service)
                                     &p_traum_service->service_handle);
 	APP_ERROR_CHECK(err_code);
 	
+        
+
 	
 	// OUR_JOB: Call the function our_char_add() to add our new characteristic to the service.
         uint8_t value[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
         traum_char_add(p_traum_service, &p_traum_service->char_base_handle, value, BLE_UUID_TRAUM_BASE_CHARACTERISTC_UUID);
         
         //add characteristic for config
-        uint8_t value_conf = 0x00;
+        uint8_t value_conf[CONF_CHAR_VALUE_LENGTH] = {0x00};
         traum_conf_char_add(p_traum_service, &p_traum_service->char_conf_handle, value_conf, BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID);
  
 	
@@ -325,7 +331,7 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)//, int32
 		hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
 		hvx_params.offset = 0;
 		hvx_params.p_len  = &len;
-		hvx_params.p_data = spi_read_data(); //returns a (unit8_t*) to next data chunk
+		hvx_params.p_data = spi_get_data_pointer(); //returns a (unit8_t*) to next data chunk
 
 		err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
                 //NRF_LOG_INFO("EEG err: %i 0x%04x", err_code, err_code);
@@ -351,5 +357,34 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)//, int32
         //NRF_LOG_INFO("upd end");
     
         ble_traum_char_update_semaphore = true; //enable access
+    }
+}
+
+
+// ALREADY_DONE_FOR_YOU: Function to be called when updating characteristic value
+void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data)
+{
+    NRF_LOG_INFO("TBU 0.");
+    NRF_LOG_FLUSH();
+    if (p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) {
+    NRF_LOG_INFO("TBU 1.");
+    NRF_LOG_FLUSH();
+            uint32_t       err_code;
+
+            uint16_t               len = CONF_CHAR_VALUE_LENGTH;
+            ble_gatts_hvx_params_t hvx_params;
+            memset(&hvx_params, 0, sizeof(hvx_params));
+
+            hvx_params.handle = p_traum_service->char_conf_handle.value_handle;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+            hvx_params.offset = 0;
+            hvx_params.p_len  = &len;
+            hvx_params.p_data = data;
+
+    NRF_LOG_INFO("TBU 2.");
+    NRF_LOG_FLUSH();
+            err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
+    NRF_LOG_INFO("TBU 3.");
+    NRF_LOG_FLUSH();
     }
 }

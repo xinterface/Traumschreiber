@@ -65,20 +65,25 @@
 #define SPI_0_SDI  15 // connected to SDI-signal from AD0
 #define SPI_0_SDO  16 // connected to SDO-signal from AD0
 
-//#define SPI_0_DRDY 14 // connected to \DRDY-signal from AD1
-//#define SPI_0_SCLK  19 // connected to SCLK-signal from AD1
-//#define SPI_0_CS    8 // connected to CS-signal from AD1
-//#define SPI_0_SDI  7 // connected to SDI-signal from AD1
-//#define SPI_0_SDO  5 // connected to SDO-signal from AD1
+#define SPI_1_DRDY 14 // connected to \DRDY-signal from AD1
+#define SPI_1_SCLK  19 // connected to SCLK-signal from AD1
+#define SPI_1_CS    8 // connected to CS-signal from AD1
+#define SPI_1_SDI  7 // connected to SDI-signal from AD1
+#define SPI_1_SDO  5 // connected to SDO-signal from AD1
 
-//#define SPI_0_DRDY 25 // connected to \DRDY-signal from AD2
-//#define SPI_0_SCLK  22 // connected to SCLK-signal from AD2
-//#define SPI_0_CS    24 // connected to CS-signal from AD2
-//#define SPI_0_SDI  28 // connected to SDI-signal from AD2
-//#define SPI_0_SDO  29 // connected to SDO-signal from AD2
+#define SPI_2_DRDY 25 // connected to \DRDY-signal from AD2
+#define SPI_2_SCLK  22 // connected to SCLK-signal from AD2
+#define SPI_2_CS    24 // connected to CS-signal from AD2
+#define SPI_2_SDI  28 // connected to SDI-signal from AD2
+#define SPI_2_SDO  29 // connected to SDO-signal from AD2
 
-#define SPI_INSTANCE  0 /**< SPI instance index. */
-static const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI instance. */
+#define AD_NUMBER      3
+static const uint8_t spi_instances[] = {0,1,2}; /**< SPI instance indices. */
+static uint8_t spi_instances_id[] = {0,1,2}; /**< SPI instance indices for ini-funcion callback context (needs to be !const). */
+static const nrf_drv_spi_t spi[] = {NRF_DRV_SPI_INSTANCE(0), NRF_DRV_SPI_INSTANCE(1), NRF_DRV_SPI_INSTANCE(2)};  /**< SPI instance. */
+
+//#define SPI_INSTANCE  0 /**< SPI instance index. */
+//static const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI instance. */
 
 
 //SPI Constants and buffers
@@ -87,15 +92,16 @@ static const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI i
 #define SPI_READ_PER_CHANNEL      4
 #define SPI_READ_LENGTH   SPI_READ_CHANNEL_NUMBER*SPI_READ_PER_CHANNEL
 static uint8_t       m_tx_buf[] = SPI_READ_SIGNAL;           /**< TX buffer. */
-static uint8_t       m_rx_buf[SPI_READ_LENGTH + 1];    /**< RX buffer. */
+static uint8_t       m_rx_buf[AD_NUMBER][SPI_READ_LENGTH + 1];    /**< RX buffer. */
 static const uint8_t m_length  =  sizeof(m_tx_buf);        /**< Transfer length. */
-static const uint8_t m_rlength =  sizeof(m_rx_buf);        /**< RX Buffer length. */
+static const uint8_t m_rlength =  sizeof(m_rx_buf[0]);        /**< RX Buffer length. */
 
 #define ADREG_GENERAL_USER_CONFIG_1 {0x11, 0x24} //write signal for register with standart settings
 #define ADREG_GENERAL_USER_CONFIG_2 {0x12, 0x09} //write signal for register with standart settings
 #define ADREG_GENERAL_USER_CONFIG_3 {0x13, 0x80} //write signal for register with standart settings
-#define ADREG_GENERAL_USER_CONFIG_3_BYTE_OR 0x10 //Byte for or operation with GUC3-Register to set Bit#4
-#define ADREG_GENERAL_USER_CONFIG_1_BYTE_OR 0x10 //Byte for or operation with GUC1-Register to set Bit#4
+#define ADREG_GENERAL_USER_CONFIG_3_BYTE_OR 0x10 //Byte for OR operation with GUC3-Register to set Bit#4
+#define ADREG_GENERAL_USER_CONFIG_1_BYTE_OR 0x10 //Byte for OR operation with GUC1-Register to set Bit#4
+#define ADREG_GENERAL_USER_CONFIG_2_BYTE_OR 0x20 //Byte for OR operation with GUC2-Register to set Bit#5
 
 #define ADREG_DECIMATION_RATE_N     {0x60, 0x00, 0x61, 0x80} //write signal for register with standart settings
 #define ADREG_DECIMATION_RATE_N_MOD {0x60, 0x08, 0x61, 0x00} //write signal for register, ODR = 250Hz (should, but actually seems to be 500Hz)
@@ -107,53 +113,62 @@ static const uint8_t m_rlength =  sizeof(m_rx_buf);        /**< RX Buffer length
 #define ADREG_CHANNEL_CONFIG {0x00, 0x00} //write signal for channel 0 with standart settings
 #define ADREG_CHANNEL_CONFIG_GAIN_MASK 0xC0 //mask to code gain into channel config
 
+#define ADREG_SAR_MUX {0x16, 0x00} //write signal to set SAR to read out battery status
+
+
 static uint8_t triggerSkipCounter = 0; //counter used to skip trigger events so log buffer does not overflow
 static uint8_t triggerSkipCounterMax = 0; // how many events are skipped (+1)
 
 static uint16_t packetSkipCounter = 0;
 
+
 //SPI data recieve ring buffer
-#define SPI_DATA_BUFFER_LENGTH      SPI_READ_LENGTH*8
-#define SPI_DATA_BUFFER_WRITE_SIZE  SPI_READ_LENGTH
-#define SPI_DATA_BUFFER_READ_SIZE   TRAUM_SERVICE_VALUE_LENGTH
-static uint8_t  spi_read_buf[SPI_DATA_BUFFER_LENGTH];    /**< RX buffer. */
-static const uint16_t  srb_buffer_length    = SPI_DATA_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        srb_write_position  = 0;
-static const uint16_t  srb_packet_size     = SPI_READ_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        srb_read_position   = 0;
-static uint16_t        srb_capacity_used   = 0;
+//#define SPI_DATA_BUFFER_LENGTH      SPI_READ_LENGTH*8*AD_NUMBER
+//#define SPI_DATA_BUFFER_WRITE_SIZE  SPI_READ_LENGTH
+//#define SPI_DATA_BUFFER_READ_SIZE   TRAUM_SERVICE_VALUE_LENGTH
+//static uint8_t  spi_read_buf[SPI_DATA_BUFFER_LENGTH];    /**< RX buffer. */
+//static const uint16_t  srb_buffer_length    = SPI_DATA_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
+//static uint16_t        srb_write_position  = 0;
+//static const uint16_t  srb_packet_size     = SPI_READ_LENGTH*AD_NUMBER; //needed because somehow constants can't be used in calculations...
+//static uint16_t        srb_read_position   = 0;
+//static uint16_t        srb_capacity_used   = 0;
+static int32_t  spi_channel_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
+static bool  ad_recieved[] = {false, false, false};
+
 
 //BLE data send ring buffer
-#define SPI_BLE_BUFFER_LENGTH      SPI_DATA_BUFFER_READ_SIZE*12
+#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*16
 static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
-static const uint16_t  stb_buffer_length    = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
 static uint16_t        stb_write_position  = 0;
-static const uint16_t  stb_packet_size     = SPI_DATA_BUFFER_READ_SIZE; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_w   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
 static uint16_t        stb_read_position   = 0;
-static uint16_t        stb_capacity_used   = 0;
+static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        stb_write_capacity  = 0; //used
+static uint16_t        stb_read_capacity   = 0; //used
 
 //compression
-static int32_t  spi_last_abs_values[SPI_READ_CHANNEL_NUMBER];
-static int32_t  spi_new_diff_values[SPI_READ_CHANNEL_NUMBER];
+static int32_t  spi_last_abs_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
+static int32_t  spi_new_diff_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
 static uint8_t  recieved_packets_counter      = 0;
 static uint8_t  recieved_packets_counter_max  = 16;
-static const uint16_t spi_min_bits_per_channel      = 5;
-static const uint16_t spi_max_bits_per_channel      = 12;
-static int16_t  spi_max_difval_per_channel    = (1 << (spi_max_bits_per_channel-1)) - 1; //2**spi_max_bits_per_channel
-static int16_t  spi_min_difval_per_channel    = -(1 << (spi_max_bits_per_channel-1));
-static uint8_t  spi_overflow_send_buf[SPI_DATA_BUFFER_READ_SIZE*2];    /**< overflow buffer. */
-static uint16_t sob_capacity_used   = 0; //number of bits
-static uint16_t sob_capacity_max    = SPI_DATA_BUFFER_READ_SIZE*2*8; //number of bits
-static uint16_t sob_read_position   = 0; //number of bits
-#define SPI_COMP_CHANNELS_PER_FULL_PACKAGE          6
-#define SPI_COMP_BYTES_PER_FULL_PACKAGE_CHANNELS    3
+//static const uint16_t spi_min_bits_per_channel      = 5;
+//static const uint16_t spi_max_bits_per_channel      = 12;
+//static int16_t  spi_max_difval_per_channel    = (1 << (spi_max_bits_per_channel-1)) - 1; //2**spi_max_bits_per_channel
+//static int16_t  spi_min_difval_per_channel    = -(1 << (spi_max_bits_per_channel-1));
+//static uint8_t  spi_overflow_send_buf[SPI_DATA_BUFFER_READ_SIZE*2];    /**< overflow buffer. */
+//static uint16_t sob_capacity_used   = 0; //number of bits
+//static uint16_t sob_capacity_max    = SPI_DATA_BUFFER_READ_SIZE*2*8; //number of bits
+//static uint16_t sob_read_position   = 0; //number of bits
+//#define SPI_COMP_CHANNELS_PER_FULL_PACKAGE          6
+//#define SPI_COMP_BYTES_PER_FULL_PACKAGE_CHANNELS    3
 
 
 //Debug Data Generation
 #define SPI_DATA_GEN_FLAG   0
 static uint8_t  spi_data_gen_enabled = SPI_DATA_GEN_FLAG;
 static uint8_t  spi_data_gen_use_half = 0;
-#define SPI_DATA_GEN_BASE   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} //default read signal for 32 Bytes
+//#define SPI_DATA_GEN_BASE   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} //default read signal for 32 Bytes
 #define SPI_DATA_GEN_BASE_32   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 static uint32_t  spi_data_gen_buf[8] = SPI_DATA_GEN_BASE_32;
 
@@ -167,7 +182,7 @@ static void spi_data_generation_timeout_handler(void * p_context);
  */
 void timer_led_event_handler(nrf_timer_event_t event_type, void* p_context);
 
-void spi_transfer_read(void);
+void spi_transfer_read(uint8_t ad_id);
 
 /**
  * @brief GPIO user event handler.
@@ -191,18 +206,19 @@ static void gpio_init(void);
  */
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context);
+void spi_encode_data(void);
 
 void spi_ble_connect(ble_traum_t * p_traum_service);
 void spi_ble_disconnect();
 void spi_ble_notify(uint16_t notify);
 
-bool spi_new_data(void);
 
-uint8_t* spi_read_data(void);
+bool spi_new_data(void);
+uint8_t* spi_get_data_pointer(void);
 void spi_data_sent(void);
 void spi_ble_sent(uint8_t count);
 
-void spi_config_update(uint8_t value);
+void spi_config_update(const uint8_t * value_p);
 void spi_init(void);
 
 

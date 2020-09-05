@@ -52,7 +52,7 @@
 #define BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID     0xECC0 // Just a random, but recognizable value
 
 #define TRAUM_SERVICE_VALUE_LENGTH  20
-#define CONF_CHAR_VALUE_LENGTH  1
+#define CONF_CHAR_VALUE_LENGTH  4
 
 
 
@@ -88,6 +88,7 @@ void traum_service_init(ble_traum_t * p_traum_service);
 
 
 void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service);
+void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data);
 
 
 
