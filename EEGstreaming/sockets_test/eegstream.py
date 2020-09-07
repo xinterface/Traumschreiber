@@ -3,6 +3,7 @@ import time
 import datetime
 import socket
 import json
+from threading import Thread
 
 from matplotlib import pyplot as plt
 #%matplotlib notebook
@@ -78,7 +79,7 @@ class EEG:
             self.connection = None 
             self.address = ""
             self.buffersize = buffersize
-            self.reftime = -1
+            self.reftime = None # The time reference - The timestamp of the first pkg is used as t_0.
             
         def build_connection(self,host="",port=65432):
             '''
@@ -119,7 +120,7 @@ class EEG:
             EEG.connecting = False
             return
 
-        def stream(self, buffersize=1024):
+        def stream(self):
             '''
             Reads and processes datastream from a connection.
             Expects incoming data to be stringified json files and turns them
@@ -139,7 +140,7 @@ class EEG:
             self.clear_buffer()
             data = ""
             while not EEG.streaming_stop_flag:
-                response = self.connection.recv(buffersize).decode("utf8")
+                response = self.connection.recv(self.buffersize).decode("utf8")
                 data += response
                 
                 if "\n" in data:
@@ -148,6 +149,7 @@ class EEG:
 
             EEG.streaming = False
             EEG.buffering = False
+            self.reftime = None
             return
         
         def clear_buffer(self):
@@ -176,7 +178,7 @@ class EEG:
             remainder = pkgs.pop(-1)
             pkg_dicts = [json.loads(p) for p in pkgs]
             
-            if self.reftime <0:
+            if self.reftime is None:
                 self.reftime = pkg_dicts[0]["time"]
             
             pkg_df = pd.DataFrame(pkg_dicts).set_index("time")

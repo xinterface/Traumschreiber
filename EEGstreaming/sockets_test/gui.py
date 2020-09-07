@@ -1,6 +1,10 @@
+from eegstream import EEG
 from IPython.core.display import display, clear_output
 from IPython.display import IFrame, Javascript
 import ipywidgets as ipw
+import time
+
+from threading import Thread
 
 class GUI:
     def __init__(self):
@@ -106,6 +110,12 @@ class GUI:
             self.widgets["connect_btn"].tooltip = "Press to Connect"
 
     def handle_stream_btn(self,b):
+        if not EEG.connected:
+            b.button_style=""
+            b.description="Stream"
+            b.tooltip="Must be connected to device"
+            return
+			
         if not EEG.streaming:
             Thread(target = self.streamer.stream, daemon=True).start()
             self.plotter.animation.event_source.start()
@@ -114,7 +124,6 @@ class GUI:
             b.description="Streaming"
             b.tooltip="Press to stop streaming"
         else:
-            
             EEG.streaming_stop_flag = True
             self.plotter.animation.event_source.stop()
             
@@ -127,12 +136,12 @@ class GUI:
         if not EEG.recording:
             EEG.reset()
             EEG.recording = True
-            b.description="RECORDING"
+            b.description="Record"
             b.button_style="danger"
             b.tooltip="Click to stop recording"
         else:
             EEG.recording = False
-            b.description="RECORDING"
+            b.description="Record"
             b.tooltip="New recording, discard old one"
             b.button_style=""
     def handle_save_btn(self,b):
