@@ -53,6 +53,7 @@
 #include "app_timer.h"
 #include "nrf_drv_timer.h"
 #include "traumschreiber_service.h"
+#include "arm_math.h"
 
 
 // timer
@@ -73,11 +74,45 @@ static void spi_timer_timeout_handler(void * p_context)
 {
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
+
+    NRF_LOG_INFO("rec: %i, send: %i, filter %i", collected_packets_counter, send_packets_counter, spi_iir_filter_enabled);
 //    NRF_LOG_INFO("r,p: %i/%i,c: %i\t\ts,p: %i/%i,c: %i", srb_read_position, srb_write_position, srb_capacity_used, stb_read_position, stb_write_position, stb_capacity_used);
-    packetSkipCounter = 0;
-    //nrf_gpio_pin_toggle(17);
+    collected_packets_counter = 0;
+    send_packets_counter = 0;
 }
 
+
+
+//keeping track whether BLE is connected or not.
+void spi_ble_connect(ble_traum_t * p_traum_service)
+{
+    spi_traum_service = p_traum_service;
+    spi_ble_connected_flag = true;
+    NRF_LOG_INFO(" spi_ble_connect called");
+}
+void spi_ble_disconnect()
+{
+    spi_traum_service = NULL;
+    spi_ble_connected_flag = false;
+
+    //resetting buffers
+    stb_write_position  = 0;
+    stb_read_position   = 0;
+    stb_write_capacity  = 0;
+    stb_read_capacity   = 0;
+
+    NRF_LOG_INFO(" spi_ble_disconnect called");
+}
+
+//keeping track whether BLE stack has notifications enabled.
+void spi_ble_notify(uint16_t notify)
+{
+    if (notify == 1) {
+        spi_ble_notification_flag = true;
+    } else {
+        spi_ble_notification_flag = false;
+    }
+}
 
 
 //initiates SPI-read
@@ -150,6 +185,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
         //see if all channels were recieved, if yes try to send data
         if (ad_recieved[0] && ad_recieved[1] && ad_recieved[2]) {
+            collected_packets_counter += 1;
 
             //if there is space in spi_send_buffer
             if (stb_write_capacity + stb_packet_size_w > stb_buffer_length) {
@@ -176,9 +212,10 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                 }
 
                 //filter
+                spi_filter_data();
 
                 //encode
-                spi_encode_data();
+                spi_encode_data_old();
 
                 //call BLE send function to try to send the received data
                 traum_eeg_data_characteristic_update(spi_traum_service);
@@ -194,35 +231,84 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 }
 
 
-//keeping track whether BLE is connected or not.
-void spi_ble_connect(ble_traum_t * p_traum_service)
-{
-    spi_traum_service = p_traum_service;
-    spi_ble_connected_flag = true;
-    NRF_LOG_INFO(" spi_ble_connect called");
-}
-void spi_ble_disconnect()
-{
-    spi_traum_service = NULL;
-    spi_ble_connected_flag = false;
+/**
+ * @brief Function to fetch the current pointer to the oldest spi data.
+ * should probably be called spi_get_(send)_data
+ */
+void spi_filter_data(void)
+{    
+    if (spi_iir_filter_enabled) {
+        float32_t value;
+        float32_t filtered;
+        //NRF_LOG_INFO("f1: %i = " NRF_LOG_FLOAT_MARKER ",", spi_channel_values[0], NRF_LOG_FLOAT(channel0s));
+        //NRF_LOG_FLUSH();
+                
+        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+        
+            value = (float32_t) spi_channel_values[i];
 
-    //resetting buffers
-    stb_write_position  = 0;
-    stb_read_position   = 0;
-    stb_write_capacity  = 0;
-    stb_read_capacity   = 0;
+            arm_biquad_cascade_df2T_f32(&iir_instance[i], &value, &filtered, 1);
 
-    NRF_LOG_INFO(" spi_ble_disconnect called");
-}
+            spi_filtered_values[i] = (int32_t) filtered;
 
-//keeping track whether BLE stack has notifications enabled.
-void spi_ble_notify(uint16_t notify)
-{
-    if (notify == 1) {
-        spi_ble_notification_flag = true;
+            //spi_new_diff_values[i] = val - spi_last_abs_values[i]; //change to last recieved value
+            //spi_last_abs_values[i] = val;
+        }
     } else {
-        spi_ble_notification_flag = false;
+  
+        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+
+            spi_filtered_values[i] = spi_channel_values[i];
+
+        }
     }
+    
+}
+
+
+/**
+ * @brief Function to fetch the current pointer to the oldest spi data.
+ * should probably be called spi_get_(send)_data
+ */
+void spi_encode_data_old(void)
+{    
+    //resetting the send buffer
+    memset(&spi_send_buf[stb_write_position], 0, stb_packet_size_w);
+    
+    uint8_t * spi_read_buf = (uint8_t*)spi_filtered_values;
+    
+    int8_t offset = 0;
+    int8_t index = 1;
+    int8_t a;
+
+    //for each channel, fetch current value and calculate difference to the last one
+    for(int i = 0; i < SPI_READ_CHANNEL_NUMBER-2;i++) { //only 6 channels!
+        offset++; //skipp first byte per channel
+        for(a = 0;a<3;a++){
+            spi_send_buf[stb_write_position+index] = spi_read_buf[offset];
+            index++;
+            offset++;
+        }
+    }
+    
+
+    //fill in header
+    //4 bits for packet ID, 4 bits # packets dropped
+    //dropped the 1 bit error Bit
+    packetSkipCounter = packetSkipCounter > 15 ? 0xF : packetSkipCounter;
+    spi_send_buf[stb_write_position] = (uint8_t)((recieved_packets_counter << 4) | (packetSkipCounter % 16));
+    recieved_packets_counter = (recieved_packets_counter + 1) % 16;
+    packetSkipCounter = 0;
+
+    //update ringbuffer characteristics
+    stb_write_position = (stb_write_position + stb_packet_size_w) % stb_buffer_length;
+    stb_write_capacity += stb_packet_size_w;
+    stb_read_capacity += stb_packet_size_w;
+
+//    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) tmp_buf, *(uint32_t*) tmp_buf, srb_read_position, srb_capacity_used);
+//NRF_LOG_INFO(" R: %08x %08x", *(uint32_t*) &spi_read_buf[srb_read_position], *(uint32_t*) &spi_read_buf[srb_read_position+4]);
+//NRF_LOG_INFO(" S: %08x %08x", *(uint32_t*) &spi_send_buf[stb_write_position], *(uint32_t*) &spi_send_buf[stb_write_position+4]);
+    //    
 }
 
 
@@ -304,6 +390,8 @@ void spi_data_sent()
 {
     stb_read_position = (stb_read_position + stb_packet_size_r) % stb_buffer_length;
     stb_read_capacity -= stb_packet_size_r;
+
+    send_packets_counter += 1;
 }
 
 //update ble-buffer read pointer and capacity
@@ -393,6 +481,8 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     spi_data_gen_enabled = value & 0x20;
     spi_data_gen_use_half = value & 0x10;
+
+    spi_iir_filter_enabled = (0x04 & ~(value & 0x04)) >> 2;
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     
@@ -539,6 +629,12 @@ void spi_init(void)
     //init GPIO and setting trigger for \DRDY-signal
     gpio_init();
   
+    //init filters
+    //for now only for one channel
+    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+        arm_biquad_cascade_df2T_init_f32(&iir_instance[i], IIR_NUMSTAGES, m_biquad_coeffs, m_biquad_state[i]);
+    }
+
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();
 

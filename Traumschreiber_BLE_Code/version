@@ -8,7 +8,9 @@ works:
 		in 20 Byte packets
 		trying to send on each recieved AD packet or if data has been sent (via BLE)
 	filtering
-		not yet implemented
+		biquad cascade IIR filter from arm_math package for M4
+			one instance per channel
+		turned on by default, deactivatable via config characteristic
 	encoding
 		sending first 6 channels of first AD in full width, dropping the rest
 	dummy data generation
@@ -21,6 +23,7 @@ works:
 			ooxo oooo: generate data (0: off, 1: on)
 			ooox oooo: if set, replace half of the generated data by real data (only works together with the option above, obviously)
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
+			oooo oxoo: if set, iir filtering is turned off (sorry for making inverse coding. 1: off, 0: on)
 		2nd Byte: reserved
 		3rd and 4th Byte: debug/controll data. for example battery status.
 		

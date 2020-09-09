@@ -57,6 +57,10 @@
 #include "nrf_drv_timer.h"
 #include "traumschreiber_service.h"
 
+#define ARM_MATH_CM4
+#include "arm_math.h"
+
+
 
 
 #define SPI_0_DRDY 17 // connected to \DRDY-signal from AD0
@@ -89,6 +93,7 @@ static const nrf_drv_spi_t spi[] = {NRF_DRV_SPI_INSTANCE(0), NRF_DRV_SPI_INSTANC
 //SPI Constants and buffers
 #define SPI_READ_SIGNAL   {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} //default read signal for 32 Bytes
 #define SPI_READ_CHANNEL_NUMBER   8
+#define SPI_CHANNEL_NUMBER_TOTAL SPI_READ_CHANNEL_NUMBER*AD_NUMBER
 #define SPI_READ_PER_CHANNEL      4
 #define SPI_READ_LENGTH   SPI_READ_CHANNEL_NUMBER*SPI_READ_PER_CHANNEL
 static uint8_t       m_tx_buf[] = SPI_READ_SIGNAL;           /**< TX buffer. */
@@ -132,7 +137,7 @@ static uint16_t packetSkipCounter = 0;
 //static const uint16_t  srb_packet_size     = SPI_READ_LENGTH*AD_NUMBER; //needed because somehow constants can't be used in calculations...
 //static uint16_t        srb_read_position   = 0;
 //static uint16_t        srb_capacity_used   = 0;
-static int32_t  spi_channel_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
+static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static bool  ad_recieved[] = {false, false, false};
 
 
@@ -148,10 +153,13 @@ static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
 
 //compression
-static int32_t  spi_last_abs_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
-static int32_t  spi_new_diff_values[SPI_READ_CHANNEL_NUMBER*AD_NUMBER];
+static int32_t  spi_last_abs_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int32_t  spi_new_diff_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  recieved_packets_counter      = 0;
 static uint8_t  recieved_packets_counter_max  = 16;
+static uint16_t  send_packets_counter      = 0;
+static uint8_t  collected_packets_counter      = 0;
 //static const uint16_t spi_min_bits_per_channel      = 5;
 //static const uint16_t spi_max_bits_per_channel      = 12;
 //static int16_t  spi_max_difval_per_channel    = (1 << (spi_max_bits_per_channel-1)) - 1; //2**spi_max_bits_per_channel
@@ -163,6 +171,17 @@ static uint8_t  recieved_packets_counter_max  = 16;
 //#define SPI_COMP_CHANNELS_PER_FULL_PACKAGE          6
 //#define SPI_COMP_BYTES_PER_FULL_PACKAGE_CHANNELS    3
 
+
+//filtering
+#define IIR_ORDER     4
+#define IIR_NUMSTAGES (IIR_ORDER/2)
+static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
+static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] =
+{
+    0.9007,  0.4943,  0.9007, -0.4241, -0.8993,  1.0000,  0.5488,  1.0000, -0.6163, -0.9022
+};
+static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
+static uint8_t  spi_iir_filter_enabled = 1;
 
 //Debug Data Generation
 #define SPI_DATA_GEN_FLAG   0
@@ -206,6 +225,8 @@ static void gpio_init(void);
  */
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context);
+void spi_filter_data(void);
+void spi_encode_data_old(void);
 void spi_encode_data(void);
 
 void spi_ble_connect(ble_traum_t * p_traum_service);
