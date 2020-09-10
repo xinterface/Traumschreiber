@@ -178,7 +178,7 @@ static uint8_t  collected_packets_counter      = 0;
 static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
 static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] =
 {
-    0.9007,  0.4943,  0.9007, -0.4241, -0.8993,  1.0000,  0.5488,  1.0000, -0.6163, -0.9022
+    0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321
 };
 static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_iir_filter_enabled = 1;
