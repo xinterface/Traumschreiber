@@ -199,7 +199,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
                 if (spi_data_gen_enabled) {
                     for(int8_t i = 0;i < 8; i++) {
-                        spi_data_gen_buf[i] = (spi_data_gen_buf[i] + 0x010101) & 0xFFFFFF;
+                        spi_data_gen_buf[i] = spi_data_gen_buf[i] + 0x010101;
                     }
 
                     //copy new data to spi_read_buffer from generation buffer
@@ -219,6 +219,10 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
                 //call BLE send function to try to send the received data
                 traum_eeg_data_characteristic_update(spi_traum_service);
+
+
+                //NRF_LOG_INFO("S: %02x%02x%02x%02x = %i", m_rx_buf[0][0], m_rx_buf[0][1], m_rx_buf[0][2], m_rx_buf[0][3], spi_channel_values[0]);
+
 
             } //end IF here to wait for next round of packets if buffer is full
 
@@ -250,6 +254,7 @@ void spi_filter_data(void)
             arm_biquad_cascade_df2T_f32(&iir_instance[i], &value, &filtered, 1);
 
             spi_filtered_values[i] = (int32_t) filtered;
+            //add check for min/max values?
 
             //spi_new_diff_values[i] = val - spi_last_abs_values[i]; //change to last recieved value
             //spi_last_abs_values[i] = val;
@@ -275,22 +280,26 @@ void spi_encode_data_old(void)
     //resetting the send buffer
     memset(&spi_send_buf[stb_write_position], 0, stb_packet_size_w);
     
-    uint8_t * spi_read_buf = (uint8_t*)spi_filtered_values;
+    uint8_t * spi_read_buf;
     
-    int8_t offset = 0;
     int8_t index = 1;
     int8_t a;
 
     //for each channel, fetch current value and calculate difference to the last one
     for(int i = 0; i < SPI_READ_CHANNEL_NUMBER-2;i++) { //only 6 channels!
-        offset++; //skipp first byte per channel
-        for(a = 0;a<3;a++){
-            spi_send_buf[stb_write_position+index] = spi_read_buf[offset];
+        spi_read_buf = (uint8_t*)&spi_filtered_values[i];
+        for(a = 2;a>=0;a--){
+            spi_send_buf[stb_write_position+index] = spi_read_buf[a];
             index++;
-            offset++;
         }
     }
-    
+
+    //spi_read_buf = (uint8_t*)&spi_filtered_values[0];
+    //NRF_LOG_INFO("E: %02x%02x%02x%02x = %i", spi_read_buf[0], spi_read_buf[1], spi_read_buf[2], spi_read_buf[3], spi_filtered_values[0]);
+
+    //spi_read_buf = (uint8_t*)&spi_filtered_values[0];
+    //NRF_LOG_INFO("F: %02x%02x%02x%02x = %i", spi_read_buf[0], spi_read_buf[1], spi_read_buf[2], spi_read_buf[3], spi_filtered_values[0]);
+
 
     //fill in header
     //4 bits for packet ID, 4 bits # packets dropped
@@ -451,6 +460,9 @@ uint16_t spi_read_battery_status() {
 
     NRF_LOG_INFO("SPI BS 3.");
     NRF_LOG_FLUSH();
+
+//turn back to measurements reading!!!!
+
        return (uint16_t)*m_rx_buf[ad_id];
 
 }
@@ -637,5 +649,15 @@ void spi_init(void)
 
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();
+
+//    NRF_LOG_INFO("T: %i, %i", (int32_t) 0x10000000, (int32_t) 0x00000010);
+//    uint8_t * test = (uint8_t*)&spi_channel_values;
+//    spi_channel_values[0] = 0x01010100 & 0xFFFF0000;
+//    //test[0] = 0x10;
+//    NRF_LOG_INFO("T2: %i", spi_channel_values[0]);
+//    spi_channel_values[0] = 0x01010100 & 0x0000FFFF;
+//    //test[3] = 0x10;
+//    NRF_LOG_INFO("T2: %i", spi_channel_values[0]);
+
 
 }
