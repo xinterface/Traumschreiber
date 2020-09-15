@@ -151,6 +151,7 @@ static uint16_t        stb_read_position   = 0;
 static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
 static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
+static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
 
 //compression
 static int32_t  spi_last_abs_values[SPI_CHANNEL_NUMBER_TOTAL];
@@ -234,7 +235,7 @@ void spi_ble_disconnect();
 void spi_ble_notify(uint16_t notify);
 
 
-bool spi_new_data(void);
+int8_t spi_new_data(void);
 uint8_t* spi_get_data_pointer(void);
 void spi_data_sent(void);
 void spi_ble_sent(uint8_t count);

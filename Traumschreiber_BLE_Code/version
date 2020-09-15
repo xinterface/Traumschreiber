@@ -4,7 +4,8 @@ works:
 		in 32 Byte packets each
 		if data from all 3 is there and send buffer has space: try to filter/encode, write to send buffer and then send
 	sending via BLE
-		only fetching/sending if other device is connected and has enabled notifications (both nicely triggered on BLE-events)
+		packages are (by default) distributed over three characteristics
+		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
 		in 20 Byte packets
 		trying to send on each recieved AD packet or if data has been sent (via BLE)
 	filtering
@@ -20,10 +21,10 @@ works:
 	configuration characteristic (4 Bytes total)
 		1st Byte:
 			xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
-			ooxo oooo: generate data (0: off, 1: on)
+			ooxo oooo: generate data (0: off, 1: on), this disables/enables filtering (no filtering with dummy data)
 			ooox oooo: if set, replace half of the generated data by real data (only works together with the option above, obviously)
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
-			oooo oxoo: if set, iir filtering is turned off (sorry for making inverse coding. 1: off, 0: on)
+			oooo oxoo: if set, data is only send via first characteristic
 		2nd Byte: reserved
 		3rd and 4th Byte: debug/controll data. for example battery status.
 		
@@ -34,9 +35,4 @@ constraints:
 	datarate: according to incoming AD packets (~250Hz)
 	error output
 		each packet contains in the second nibble of the first Byte the info, how many packets have been dropped internally since the last package. if >15, 15 is send.
-	
-
-comments:
-	dropped one ring buffer (recieving one), though now there are two capacities being tracked (read and write) in the sending one
-	now there are no multible times encoded packets anymore, to make 11.25ms BLE intervals more efficiant and (because) it saves cpu time
 

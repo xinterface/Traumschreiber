@@ -48,12 +48,17 @@
 #define BLE_UUID_TRAUM_BASE_UUID              {0x23, 0xD1, 0x13, 0xEF, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00} // 128-bit base UUID
 #define BLE_UUID_TRAUM_SERVICE                0x0EE6 // Just a random, but recognizable value
 
-#define BLE_UUID_TRAUM_BASE_CHARACTERISTC_UUID     0xE617 // Just a random, but recognizable value
-#define BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID     0xECC0 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID     0xEE60 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID     0xEE61 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID     0xEE62 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID       0xECC0 // Just a random, but recognizable value
+
 
 #define TRAUM_SERVICE_VALUE_LENGTH  20
 #define CONF_CHAR_VALUE_LENGTH  4
 
+
+static uint8_t traum_use_only_one_characteristic = 0;
 
 
 /**
@@ -67,7 +72,9 @@ typedef struct
 {
     uint16_t    conn_handle; 
 	uint16_t    service_handle;     /**< Handle of Our Service (as provided by the BLE stack). */
-	ble_gatts_char_handles_t    char_base_handle;
+	ble_gatts_char_handles_t    char_base_handle_0;
+	ble_gatts_char_handles_t    char_base_handle_1;
+	ble_gatts_char_handles_t    char_base_handle_2;
 	ble_gatts_char_handles_t    char_conf_handle;
 }ble_traum_t;
 

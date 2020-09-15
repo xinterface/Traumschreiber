@@ -63,7 +63,7 @@ APP_TIMER_DEF(m_spi_char_timer_id);
 //ble service handle. needs to be given to traum_eeg_update_characteristic.
 ble_traum_t * spi_traum_service;
 bool spi_ble_connected_flag = false;
-bool spi_ble_notification_flag = false;
+uint8_t spi_ble_notification_flag = 0;
 
 //uint8_t spi_bletrans_fullpackage_flag = 0; //it stores the packetnumber of the full-transmission-packages (if not active it has value 0)
 
@@ -108,9 +108,14 @@ void spi_ble_disconnect()
 void spi_ble_notify(uint16_t notify)
 {
     if (notify == 1) {
-        spi_ble_notification_flag = true;
+        spi_ble_notification_flag += 1;
+        //resetting buffers
+        stb_write_position  = 0;
+        stb_read_position   = 0;
+        stb_write_capacity  = 0;
+        stb_read_capacity   = 0;
     } else {
-        spi_ble_notification_flag = false;
+        spi_ble_notification_flag -= 1;
     }
 }
 
@@ -118,7 +123,7 @@ void spi_ble_notify(uint16_t notify)
 //initiates SPI-read
 void spi_transfer_ADread(uint8_t ad_id)
 {
-    if (spi_ble_connected_flag && spi_ble_notification_flag) { //only read data from AD if BLE connection exists
+    if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) { //only read data from AD if BLE connection exists
 
        // Reset rx buffer
        memset(m_rx_buf[ad_id], 0, m_rlength);
@@ -168,7 +173,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context)
 {
     //only process data if there is a BLE-connection and someone listens for the data
-    if (spi_ble_connected_flag && spi_ble_notification_flag) {
+    if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) {
 
         uint8_t ad_id = *(uint8_t*)p_context;
 
@@ -306,7 +311,7 @@ void spi_encode_data_old(void)
     //dropped the 1 bit error Bit
     packetSkipCounter = packetSkipCounter > 15 ? 0xF : packetSkipCounter;
     spi_send_buf[stb_write_position] = (uint8_t)((recieved_packets_counter << 4) | (packetSkipCounter % 16));
-    recieved_packets_counter = (recieved_packets_counter + 1) % 16;
+    recieved_packets_counter = (recieved_packets_counter + 1) % 15;
     packetSkipCounter = 0;
 
     //update ringbuffer characteristics
@@ -352,7 +357,7 @@ void spi_encode_data(void)
     //dropped the 1 bit error Bit
     packetSkipCounter = packetSkipCounter > 15 ? 0xF : packetSkipCounter;
     spi_send_buf[stb_write_position] = (uint8_t)((recieved_packets_counter << 4) | (packetSkipCounter % 16));
-    recieved_packets_counter = (recieved_packets_counter + 1) % 16;
+    recieved_packets_counter = (recieved_packets_counter + 1) % 15;
     packetSkipCounter = 0;
 
     //update ringbuffer characteristics
@@ -370,14 +375,18 @@ void spi_encode_data(void)
 /**
  * @brief Function to see if there is new data available to send.
  */
-bool spi_new_data(void)
+int8_t spi_new_data(void)
 {
     //if there is data available in spi_send_buffer
     if (stb_read_capacity >= stb_packet_size_r) {
-        return true;
+        if (traum_use_only_one_characteristic) {
+            return 0; //send new data on characteristic 0
+        } else {
+            return stb_characteristic;
+        }
     } else {
         //NRF_LOG_INFO(" no new data to send");
-        return false;
+        return -1; //no new data, don't send any
     }
 }
 
@@ -394,16 +403,18 @@ uint8_t* spi_get_data_pointer(void)
     //    NRF_LOG_INFO(" S: %08x (%08x) -> %08x  (%i)", (uint32_t*) spi_read_buf[srb_read_position], (uint32_t*) (spi_read_buf + srb_read_position), *(uint32_t*) spi_read_buf[srb_read_position], srb_read_position);
     //    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) ret, *(uint32_t*) ret, srb_read_position, srb_capacity_used);
   
-//update buffer read pointer and capacity
+//update buffer read pointer and capacity (package is in BLE queue)
 void spi_data_sent()
 {
     stb_read_position = (stb_read_position + stb_packet_size_r) % stb_buffer_length;
     stb_read_capacity -= stb_packet_size_r;
 
+    stb_characteristic = (stb_characteristic + 1) % 3; //update characteristic to send on next
+
     send_packets_counter += 1;
 }
 
-//update ble-buffer read pointer and capacity
+//update ble-buffer write capacity (package(s) is(are) out of BLE queue)
 void spi_ble_sent(uint8_t count)
 {
     //do only if there is a BLE-connection and someone listens for the data
@@ -491,10 +502,12 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
         APP_ERROR_CHECK(err_code);
     }
 
-    spi_data_gen_enabled = value & 0x20;
+    spi_data_gen_enabled = (value & 0x20) >> 1;
     spi_data_gen_use_half = value & 0x10;
+    //disable filtering with the dummy data
+    spi_iir_filter_enabled = spi_data_gen_enabled ? 0 : 1;
 
-    spi_iir_filter_enabled = (0x04 & ~(value & 0x04)) >> 2;
+    traum_use_only_one_characteristic = (value & 0x04) >> 2;
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     

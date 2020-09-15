@@ -218,8 +218,8 @@ static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_cha
 	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 	cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
 	char_md.p_cccd_md           = &cccd_md;
-	char_md.char_props.notify   = 1;
-	//char_md.char_props.indicate   = 0; //has no effect...
+	char_md.char_props.notify   = 0;
+	char_md.char_props.indicate   = 0; //has no effect...
 
    // OUR_JOB: Step 2.B, Configure the attribute metadata
     ble_gatts_attr_md_t attr_md;
@@ -291,8 +291,12 @@ void traum_service_init(ble_traum_t * p_traum_service)
 
 	
 	// OUR_JOB: Call the function our_char_add() to add our new characteristic to the service.
-        uint8_t value[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_base_handle, value, BLE_UUID_TRAUM_BASE_CHARACTERISTC_UUID);
+        uint8_t value0[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_0, value0, BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID);
+        uint8_t value1[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_1, value1, BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID);
+        uint8_t value2[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID);
         
         //add characteristic for config
         uint8_t value_conf[CONF_CHAR_VALUE_LENGTH] = {0x00};
@@ -309,7 +313,7 @@ void traum_service_init(ble_traum_t * p_traum_service)
 
 
 // ALREADY_DONE_FOR_YOU: Function to be called when updating characteristic value
-void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)//, int32_t *temperature_value)
+void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
 {
     //checking semaphore
     //this is necessary becausethere might be strange behavior if a second char_update is called during full packet transmission. so better be safe.
@@ -317,38 +321,52 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)//, int32
     if (ble_traum_char_update_semaphore) {
         ble_traum_char_update_semaphore = false; //disable access
 
-    // OUR_JOB: Step 3.E, Update characteristic value
-//	NRF_LOG_INFO("EEG bool: 0x%04x %i", p_traum_service->conn_handle, spi_new_data());
-        while ((p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) && (spi_new_data()))
+        //check if new data is present. while loop breaks if char_id < 0
+        int8_t char_id = spi_new_data();
+        while ((p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) && (char_id >= 0))
 	{
-                uint32_t       err_code;
+            uint32_t      err_code;
 
-		uint16_t               len = TRAUM_SERVICE_VALUE_LENGTH;
-		ble_gatts_hvx_params_t hvx_params;
-		memset(&hvx_params, 0, sizeof(hvx_params));
+            uint16_t      len = TRAUM_SERVICE_VALUE_LENGTH;
+            uint16_t      value_handle;
 
-		hvx_params.handle = p_traum_service->char_base_handle.value_handle;
-		hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-		hvx_params.offset = 0;
-		hvx_params.p_len  = &len;
-		hvx_params.p_data = spi_get_data_pointer(); //returns a (unit8_t*) to next data chunk
+            ble_gatts_hvx_params_t hvx_params;
+            memset(&hvx_params, 0, sizeof(hvx_params));
 
-		err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
-                //NRF_LOG_INFO("EEG err: %i 0x%04x", err_code, err_code);
-                if (err_code == NRF_SUCCESS || err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING) { //##quick fix
-                    spi_data_sent(); //inform read-pointer that package was sent successfully
-                } else if (err_code == NRF_ERROR_RESOURCES) {
-                    //NRF_LOG_INFO("BLE send buffer full");
-                    break;
-                } else if (err_code == NRF_ERROR_INVALID_STATE) {
-                    NRF_LOG_INFO("BLE notifications not enabled");
-                    break;
-                } else  {
-                    NRF_LOG_INFO("EEG err: %i 0x%04x", err_code, err_code);
-                    break;
-                }
+            if (char_id == 0) {
+                value_handle = p_traum_service->char_base_handle_0.value_handle;
+            } else if (char_id == 1) {
+                value_handle = p_traum_service->char_base_handle_1.value_handle;
+            } else if (char_id == 2) {
+                value_handle = p_traum_service->char_base_handle_2.value_handle;
+            } else {
+                break;
+            }
 
-                
+            hvx_params.handle = value_handle;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+            hvx_params.offset = 0;
+            hvx_params.p_len  = &len;
+            hvx_params.p_data = spi_get_data_pointer(); //returns a (unit8_t*) to next data chunk
+
+            err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
+            //NRF_LOG_INFO("EEG err: %i 0x%04x", err_code, err_code);
+            if (err_code == NRF_SUCCESS || err_code == BLE_ERROR_GATTS_SYS_ATTR_MISSING) { //##quick fix
+                spi_data_sent(); //inform read-pointer that package was sent successfully
+            } else if (err_code == NRF_ERROR_RESOURCES) {
+                //NRF_LOG_INFO("BLE send buffer full");
+                break;
+            } else if (err_code == NRF_ERROR_INVALID_STATE) {
+                NRF_LOG_INFO("BLE notifications not enabled");
+                break;
+            } else  {
+                NRF_LOG_INFO("EEG err: %i 0x%04x", err_code, err_code);
+                break;
+            }
+
+            //check if new data is present. while loop breaks if char_id < 0
+            char_id = spi_new_data();
+
 //            NRF_LOG_INFO(" R: %08x -> %08x", (uint32_t*)hvx_params.p_data, *(uint32_t*)hvx_params.p_data);
             //NRF_LOG_INFO(" R up : %08x", (uint32_t*)hvx_params.p_data);
             //NRF_LOG_INFO(" R upp: %08x", *(uint32_t*)hvx_params.p_data);
@@ -361,7 +379,7 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)//, int32
 }
 
 
-// ALREADY_DONE_FOR_YOU: Function to be called when updating characteristic value
+// Function to be called when updating config characteristic value
 void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data)
 {
     NRF_LOG_INFO("TBU 0.");
@@ -369,6 +387,7 @@ void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data)
     if (p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) {
     NRF_LOG_INFO("TBU 1.");
     NRF_LOG_FLUSH();
+
             uint32_t       err_code;
 
             uint16_t               len = CONF_CHAR_VALUE_LENGTH;
