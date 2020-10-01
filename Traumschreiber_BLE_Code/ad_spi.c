@@ -192,11 +192,14 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
         if (ad_recieved[0] && ad_recieved[1] && ad_recieved[2]) {
             collected_packets_counter += 1;
 
+            //filter
+            spi_filter_data();
+
             //if there is space in spi_send_buffer
             if (stb_write_capacity + stb_packet_size_w > stb_buffer_length) {
-                NRF_LOG_INFO(" stb full (c:%i)", stb_write_capacity);
+                //NRF_LOG_INFO(" stb full (c:%i)", stb_write_capacity);
                 packetSkipCounter += 1;
-                return;
+                //return;
             } else {
 
                 //copy new data to spi_read_buffer from ad read buffer
@@ -215,9 +218,6 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                         memcpy(&spi_channel_values, &spi_data_gen_buf, 32);
                     }
                 }
-
-                //filter
-                spi_filter_data();
 
                 //encode
                 spi_encode_data_old();
@@ -289,15 +289,18 @@ void spi_encode_data_old(void)
     
     int8_t index = 1;
     int8_t a;
+    uint8_t parity = 0;
 
     //for each channel, fetch current value and calculate difference to the last one
     for(int i = 0; i < SPI_READ_CHANNEL_NUMBER-2;i++) { //only 6 channels!
         spi_read_buf = (uint8_t*)&spi_filtered_values[i];
         for(a = 2;a>=0;a--){
             spi_send_buf[stb_write_position+index] = spi_read_buf[a];
+            parity = parity ^ spi_read_buf[a]; //xor == ^
             index++;
         }
     }
+    spi_send_buf[stb_write_position+index] = parity; //write parity in last Byte
 
     //spi_read_buf = (uint8_t*)&spi_filtered_values[0];
     //NRF_LOG_INFO("E: %02x%02x%02x%02x = %i", spi_read_buf[0], spi_read_buf[1], spi_read_buf[2], spi_read_buf[3], spi_filtered_values[0]);
