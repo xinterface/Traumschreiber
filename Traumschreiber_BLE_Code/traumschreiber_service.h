@@ -59,7 +59,8 @@
 
 
 static uint8_t traum_use_only_one_characteristic = 0;
-
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL 10
+static uint8_t traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL;
 
 /**
  * @brief This structure contains various status information for our service. 

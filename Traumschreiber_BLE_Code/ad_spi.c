@@ -74,11 +74,13 @@ static void spi_timer_timeout_handler(void * p_context)
 {
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
-
-    NRF_LOG_INFO("rec: %i, send: %i, filter %i", collected_packets_counter, send_packets_counter, spi_iir_filter_enabled);
-//    NRF_LOG_INFO("r,p: %i/%i,c: %i\t\ts,p: %i/%i,c: %i", srb_read_position, srb_write_position, srb_capacity_used, stb_read_position, stb_write_position, stb_capacity_used);
+if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) {
+    //NRF_LOG_INFO("rec: %i, send: %i, skip: %i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+    //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
+}
     collected_packets_counter = 0;
     send_packets_counter = 0;
+    packetSkipCounter = 0;
 }
 
 
@@ -141,13 +143,6 @@ void spi_transfer_ADread(uint8_t ad_id)
  */
 void spi_trigger_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-    //skipping events so log buffer does not overflow (helps with debugging, not of use later on)
-    if (triggerSkipCounter < triggerSkipCounterMax) {
-        triggerSkipCounter = triggerSkipCounter + 1;
-        return;
-    }
-    triggerSkipCounter = 0;
-
     uint8_t ad_id;
     if (pin == SPI_0_DRDY) {
         ad_id = 0;
@@ -159,6 +154,14 @@ void spi_trigger_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t act
        NRF_LOG_INFO("false pin trigger");
        return;
     }
+
+    //skipping events for downsampling
+    if (triggerSkipCounter[ad_id] < triggerSkipCounterMax) {
+        triggerSkipCounter[ad_id] += 1;
+        return;
+    }
+    triggerSkipCounter[ad_id] = 0;
+
     
     spi_transfer_ADread(ad_id);
 }
@@ -192,11 +195,15 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
         if (ad_recieved[0] && ad_recieved[1] && ad_recieved[2]) {
             collected_packets_counter += 1;
 
+            //filter befor check if there is space
+            //this is needed, because otherwise missed packages have aftershocks in the filtered signal
+            spi_filter_data();
+
             //if there is space in spi_send_buffer
             if (stb_write_capacity + stb_packet_size_w > stb_buffer_length) {
-                NRF_LOG_INFO(" stb full (c:%i)", stb_write_capacity);
+                //NRF_LOG_INFO(" stb full (c:%i)", stb_write_capacity);
                 packetSkipCounter += 1;
-                return;
+                //return;
             } else {
 
                 //copy new data to spi_read_buffer from ad read buffer
@@ -204,23 +211,24 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
                 if (spi_data_gen_enabled) {
                     for(int8_t i = 0;i < 8; i++) {
-                        spi_data_gen_buf[i] = spi_data_gen_buf[i] + 0x010101;
+                        spi_data_gen_buf[i] = spi_data_gen_buf[i] + spi_data_gen_add;
                     }
 
                     //copy new data to spi_read_buffer from generation buffer
                     //it seems that there is a little/big endian mixup here (ad is other order than ble chip), but since for counters that does not matter for values <256, this is ignored
                     if (spi_data_gen_use_half) {
-                        memcpy(&spi_channel_values, &spi_data_gen_buf, 12);
+                        memcpy(&spi_filtered_values, &spi_data_gen_buf, 12);
                     } else {
-                        memcpy(&spi_channel_values, &spi_data_gen_buf, 32);
+                        memcpy(&spi_filtered_values, &spi_data_gen_buf, 32);
                     }
                 }
 
-                //filter
-                spi_filter_data();
-
                 //encode
-                spi_encode_data_old();
+                if (spi_ble_use_new_encoding) {
+                    spi_encode_data();
+                } else {
+                    spi_encode_data_old();
+                }
 
                 //call BLE send function to try to send the received data
                 traum_eeg_data_characteristic_update(spi_traum_service);
@@ -249,8 +257,6 @@ void spi_filter_data(void)
     if (spi_iir_filter_enabled) {
         float32_t value;
         float32_t filtered;
-        //NRF_LOG_INFO("f1: %i = " NRF_LOG_FLOAT_MARKER ",", spi_channel_values[0], NRF_LOG_FLOAT(channel0s));
-        //NRF_LOG_FLUSH();
                 
         for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         
@@ -260,9 +266,7 @@ void spi_filter_data(void)
 
             spi_filtered_values[i] = (int32_t) filtered;
             //add check for min/max values?
-
-            //spi_new_diff_values[i] = val - spi_last_abs_values[i]; //change to last recieved value
-            //spi_last_abs_values[i] = val;
+            //kinda happens during encoding i guess
         }
     } else {
   
@@ -318,62 +322,66 @@ void spi_encode_data_old(void)
     stb_write_position = (stb_write_position + stb_packet_size_w) % stb_buffer_length;
     stb_write_capacity += stb_packet_size_w;
     stb_read_capacity += stb_packet_size_w;
-
-//    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) tmp_buf, *(uint32_t*) tmp_buf, srb_read_position, srb_capacity_used);
-//NRF_LOG_INFO(" R: %08x %08x", *(uint32_t*) &spi_read_buf[srb_read_position], *(uint32_t*) &spi_read_buf[srb_read_position+4]);
-//NRF_LOG_INFO(" S: %08x %08x", *(uint32_t*) &spi_send_buf[stb_write_position], *(uint32_t*) &spi_send_buf[stb_write_position+4]);
-    //    
 }
 
 
 /**
- * @brief Function to fetch the current pointer to the oldest spi data.
- * should probably be called spi_get_(send)_data
+ * @brief Function to encode and write data to ring buffer
  */
 void spi_encode_data(void)
 {    
     //resetting the send buffer
     memset(&spi_send_buf[stb_write_position], 0, stb_packet_size_w);
     
-    uint8_t * spi_read_buf = (uint8_t*)spi_channel_values;
-    
-    int8_t offset = 0;
-    int8_t index = 1;
-    int8_t a;
 
-    //for each channel, fetch current value and calculate difference to the last one
-    for(int i = 0; i < SPI_READ_CHANNEL_NUMBER-2;i++) { //only 6 channels!
-        offset++; //skipp first byte per channel
-        for(a = 0;a<3;a++){
-            spi_send_buf[stb_write_position+index] = spi_read_buf[offset];
-            index++;
-            offset++;
+    uint8_t c_bits_left = traum_bits_per_channel; //channel bits left
+    uint8_t b_bits_left = 8; //byte bits left
+    uint8_t byte_val = 0;
+    uint8_t write_bits = 0;
+
+    //go by channel then byte
+    uint8_t n_byte = 0; //current byte
+    int32_t c_value = 0;
+    for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
+        c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
+        c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
+        
+        spi_encoded_values[n_channel] += c_value;
+
+        c_bits_left = traum_bits_per_channel;
+        while (c_bits_left) {
+          write_bits = MIN(b_bits_left,c_bits_left);
+          byte_val = (c_value & spi_ble_difval_mask) >> (c_bits_left - write_bits);
+          byte_val <<= (b_bits_left - write_bits);
+          spi_send_buf[stb_write_position + n_byte] |= byte_val;
+
+          c_bits_left -= write_bits;
+          b_bits_left -= write_bits;
+          if (b_bits_left == 0) {
+              n_byte++;
+              b_bits_left = 8;
+          }
+
+        }
+        if (n_byte > stb_packet_size_w) {
+            NRF_LOG_INFO("encoding to much: %i", n_byte); //can not happen...
+            break;
         }
     }
     
-
-    //fill in header
-    //4 bits for packet ID, 4 bits # packets dropped
-    //dropped the 1 bit error Bit
-    packetSkipCounter = packetSkipCounter > 15 ? 0xF : packetSkipCounter;
-    spi_send_buf[stb_write_position] = (uint8_t)((recieved_packets_counter << 4) | (packetSkipCounter % 16));
+    //debug info
     recieved_packets_counter = (recieved_packets_counter + 1) % 15;
-    packetSkipCounter = 0;
 
     //update ringbuffer characteristics
     stb_write_position = (stb_write_position + stb_packet_size_w) % stb_buffer_length;
     stb_write_capacity += stb_packet_size_w;
     stb_read_capacity += stb_packet_size_w;
-
-//    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) tmp_buf, *(uint32_t*) tmp_buf, srb_read_position, srb_capacity_used);
-//NRF_LOG_INFO(" R: %08x %08x", *(uint32_t*) &spi_read_buf[srb_read_position], *(uint32_t*) &spi_read_buf[srb_read_position+4]);
-//NRF_LOG_INFO(" S: %08x %08x", *(uint32_t*) &spi_send_buf[stb_write_position], *(uint32_t*) &spi_send_buf[stb_write_position+4]);
-    //    
 }
 
 
 /**
  * @brief Function to see if there is new data available to send.
+ * if yes, returns the id of the characteristic to send the data on
  */
 int8_t spi_new_data(void)
 {
@@ -391,19 +399,15 @@ int8_t spi_new_data(void)
 }
 
 /**
- * @brief Function to fetch the current pointer to the oldest spi data.
+ * @brief Function to fetch the current pointer to the oldest encoded data.
  */
 uint8_t* spi_get_data_pointer(void)
 {    
     return &spi_send_buf[stb_read_position];
 }
 
-    //    NRF_LOG_INFO(" S d  : %08x", *(uint32_t*) spi_read_buf[srb_read_position]);
-    //    NRF_LOG_INFO(" S p  : %08x", (uint32_t*) spi_read_buf[srb_read_position]);
-    //    NRF_LOG_INFO(" S: %08x (%08x) -> %08x  (%i)", (uint32_t*) spi_read_buf[srb_read_position], (uint32_t*) (spi_read_buf + srb_read_position), *(uint32_t*) spi_read_buf[srb_read_position], srb_read_position);
-    //    NRF_LOG_INFO(" S: %08x -> %08x  (%i) (c:%i)", (uint32_t*) ret, *(uint32_t*) ret, srb_read_position, srb_capacity_used);
-  
-//update buffer read pointer and capacity (package is in BLE queue)
+
+//update buffer read pointer and capacity (package is now in BLE queue)
 void spi_data_sent()
 {
     stb_read_position = (stb_read_position + stb_packet_size_r) % stb_buffer_length;
@@ -421,7 +425,6 @@ void spi_ble_sent(uint8_t count)
     if (spi_ble_connected_flag && spi_ble_notification_flag) {
 
         stb_write_capacity -= stb_packet_size_r * count;
-      //NRF_LOG_INFO(" T pos: %i (c:%i)", stb_read_position, stb_capacity_used);
         
         //call BLE send function to try to send another packet
         traum_eeg_data_characteristic_update(spi_traum_service);
@@ -609,7 +612,7 @@ void spi_init(void)
 
 
         //writing in SRC Config to set AD ORD to 250Hz
-        uint8_t tx_buf_src[] = ADREG_DECIMATION_RATE_N_MAD; //len=4
+        uint8_t tx_buf_src[] = ADREG_DECIMATION_RATE_N_500; //len=4
         uint8_t tx_buf_len = 4;
         APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi[i], tx_buf_src, tx_buf_len, m_rx_buf[i], tx_buf_len));
 
@@ -657,7 +660,7 @@ void spi_init(void)
     //init filters
     //for now only for one channel
     for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-        arm_biquad_cascade_df2T_init_f32(&iir_instance[i], IIR_NUMSTAGES, m_biquad_coeffs, m_biquad_state[i]);
+        arm_biquad_cascade_df2T_init_f32(&iir_instance[i], IIR_NUMSTAGES, m_biquad_coeffs_167, m_biquad_state[i]);
     }
 
     NRF_LOG_INFO("SPI init fin.");

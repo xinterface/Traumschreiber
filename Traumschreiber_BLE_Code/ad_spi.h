@@ -109,8 +109,8 @@ static const uint8_t m_rlength =  sizeof(m_rx_buf[0]);        /**< RX Buffer len
 #define ADREG_GENERAL_USER_CONFIG_2_BYTE_OR 0x20 //Byte for OR operation with GUC2-Register to set Bit#5
 
 #define ADREG_DECIMATION_RATE_N     {0x60, 0x00, 0x61, 0x80} //write signal for register with standart settings
-#define ADREG_DECIMATION_RATE_N_MOD {0x60, 0x08, 0x61, 0x00} //write signal for register, ODR = 250Hz (should, but actually seems to be 500Hz)
-#define ADREG_DECIMATION_RATE_N_MAD {0x60, 0x0F, 0x61, 0xFF} //write signal for register, ODR = 250Hz (should not work, but seems to do 250Hz)
+#define ADREG_DECIMATION_RATE_N_500 {0x60, 0x08, 0x61, 0x00} //write signal for register, ODR = 250Hz (should, but actually seems to be 500Hz)
+#define ADREG_DECIMATION_RATE_N_250 {0x60, 0x0F, 0x61, 0xFF} //write signal for register, ODR = 250Hz (should not work, but seems to do 250Hz)
 
 #define ADREG_SRC_MODE_UPDATE_CLEAR {0x64, 0x00} //write signal for register with standart settings
 #define ADREG_SRC_MODE_UPDATE_SET   {0x64, 0x01} //write signal for register with update instruction
@@ -121,76 +121,60 @@ static const uint8_t m_rlength =  sizeof(m_rx_buf[0]);        /**< RX Buffer len
 #define ADREG_SAR_MUX {0x16, 0x00} //write signal to set SAR to read out battery status
 
 
-static uint8_t triggerSkipCounter = 0; //counter used to skip trigger events so log buffer does not overflow
-static uint8_t triggerSkipCounterMax = 0; // how many events are skipped (+1)
+static uint8_t triggerSkipCounter[AD_NUMBER] = {0}; //counter used to skip trigger events for downsampling
+static uint8_t triggerSkipCounterMax = 2; // how many events are skipped (each 'triggerSkipCounterMax + 1' package is taken)
 
 static uint16_t packetSkipCounter = 0;
 
-
-//SPI data recieve ring buffer
-//#define SPI_DATA_BUFFER_LENGTH      SPI_READ_LENGTH*8*AD_NUMBER
-//#define SPI_DATA_BUFFER_WRITE_SIZE  SPI_READ_LENGTH
-//#define SPI_DATA_BUFFER_READ_SIZE   TRAUM_SERVICE_VALUE_LENGTH
-//static uint8_t  spi_read_buf[SPI_DATA_BUFFER_LENGTH];    /**< RX buffer. */
-//static const uint16_t  srb_buffer_length    = SPI_DATA_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
-//static uint16_t        srb_write_position  = 0;
-//static const uint16_t  srb_packet_size     = SPI_READ_LENGTH*AD_NUMBER; //needed because somehow constants can't be used in calculations...
-//static uint16_t        srb_read_position   = 0;
-//static uint16_t        srb_capacity_used   = 0;
-static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static bool  ad_recieved[] = {false, false, false};
 
 
-//BLE data send ring buffer
-#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*16
-static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
-static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_write_position  = 0;
-static const uint16_t  stb_packet_size_w   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_read_position   = 0;
-static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_write_capacity  = 0; //used
-static uint16_t        stb_read_capacity   = 0; //used
-static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
-
-//compression
-static int32_t  spi_last_abs_values[SPI_CHANNEL_NUMBER_TOTAL];
-static int32_t  spi_new_diff_values[SPI_CHANNEL_NUMBER_TOTAL];
-static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
-static uint8_t  recieved_packets_counter      = 0;
-static uint8_t  recieved_packets_counter_max  = 16;
-static uint16_t  send_packets_counter      = 0;
-static uint8_t  collected_packets_counter      = 0;
-//static const uint16_t spi_min_bits_per_channel      = 5;
-//static const uint16_t spi_max_bits_per_channel      = 12;
-//static int16_t  spi_max_difval_per_channel    = (1 << (spi_max_bits_per_channel-1)) - 1; //2**spi_max_bits_per_channel
-//static int16_t  spi_min_difval_per_channel    = -(1 << (spi_max_bits_per_channel-1));
-//static uint8_t  spi_overflow_send_buf[SPI_DATA_BUFFER_READ_SIZE*2];    /**< overflow buffer. */
-//static uint16_t sob_capacity_used   = 0; //number of bits
-//static uint16_t sob_capacity_max    = SPI_DATA_BUFFER_READ_SIZE*2*8; //number of bits
-//static uint16_t sob_read_position   = 0; //number of bits
-//#define SPI_COMP_CHANNELS_PER_FULL_PACKAGE          6
-//#define SPI_COMP_BYTES_PER_FULL_PACKAGE_CHANNELS    3
+//debug
+static uint16_t  recieved_packets_counter      = 0;
+static uint16_t  recieved_packets_counter_max  = 16;
+static uint16_t  send_packets_counter          = 0;
+static uint16_t  collected_packets_counter     = 0;
 
 
 //filtering
 #define IIR_ORDER     4
 #define IIR_NUMSTAGES (IIR_ORDER/2)
 static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
-static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] =
-{
-    0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321
-};
+static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] = {0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321};
+static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.9007, 0.4943, 0.9007, -0.4241, -0.8993, 1.0000, 0.5488, 1.0000, -0.6163, -0.9022};
 static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_iir_filter_enabled = 1;
+
+//encoding
+#define SPI_BLE_USE_NEW_ENCODING_FLAG   1
+static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
+static int16_t  spi_min_difval        = -512;
+static uint32_t  spi_ble_difval_mask  = 0x03FF;
+
+//BLE send ring buffer
+#define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)
+static uint8_t  spi_ble_use_new_encoding = SPI_BLE_USE_NEW_ENCODING_FLAG;
+#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*24
+static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
+static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        stb_write_position  = 0;
+static const uint16_t  stb_packet_size_w   = SPI_BLE_BUFFER_WTRITE_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        stb_read_position   = 0;
+static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
+static uint16_t        stb_write_capacity  = 0; //used
+static uint16_t        stb_read_capacity   = 0; //used
+static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
 
 //Debug Data Generation
 #define SPI_DATA_GEN_FLAG   0
 static uint8_t  spi_data_gen_enabled = SPI_DATA_GEN_FLAG;
 static uint8_t  spi_data_gen_use_half = 0;
-//#define SPI_DATA_GEN_BASE   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} //default read signal for 32 Bytes
 #define SPI_DATA_GEN_BASE_32   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 static uint32_t  spi_data_gen_buf[8] = SPI_DATA_GEN_BASE_32;
+static uint16_t spi_data_gen_add = 0x000102;
 
 
 // timer event handler

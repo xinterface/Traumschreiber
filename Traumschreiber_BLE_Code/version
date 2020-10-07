@@ -11,13 +11,16 @@ works:
 	filtering
 		biquad cascade IIR filter from arm_math package for M4
 			one instance per channel
-		turned on by default, deactivatable via config characteristic
+		turned on by default, deactivated if dummy data is transmitted
 	encoding
-		sending first 6 channels of first AD in full width, dropping the rest
+		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
+		old code is still there, activatable via compilation flag
+			(sending first 6 channels of first AD in full width, dropping the rest)
 	dummy data generation
-		can be toggeled via config charactiristig (see below)
+		can be toggeled via config characteristic (see below)
 		data gets generated every time a sample from the ADs come in
 		it is possible to have generated and sampled data (see below)
+		only generates 8 channels anyways
 	configuration characteristic (4 Bytes total)
 		1st Byte:
 			xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
@@ -30,9 +33,8 @@ works:
 		
 		
 constraints:
-	24 channels (from all three ADs, but)
-		due to encoding, sending first 6 channels in full width
-	datarate: according to incoming AD packets (~250Hz)
+	datarate: sampled down from 500 to 167Hz
+		still 250Hz of packages is send
 	error output
-		each packet contains in the second nibble of the first Byte the info, how many packets have been dropped internally since the last package. if >15, 15 is send.
+		none, if transmitting with new encoding
 
