@@ -153,6 +153,7 @@ static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
+static uint32_t  spi_encode_shift     = 0x06; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
 
 //BLE send ring buffer
 #define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)

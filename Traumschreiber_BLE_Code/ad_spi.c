@@ -343,10 +343,10 @@ void spi_encode_data(void)
     uint8_t n_byte = 0; //current byte
     int32_t c_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
-        c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
+        c_value = (spi_filtered_values[n_channel] - spi_encoded_values[n_channel]) >> spi_encode_shift;
         c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
         
-        spi_encoded_values[n_channel] += c_value;
+        spi_encoded_values[n_channel] += c_value << spi_encode_shift;
 
         c_bits_left = traum_bits_per_channel;
         while (c_bits_left) {
@@ -484,6 +484,7 @@ uint16_t spi_read_battery_status() {
 void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a warning otherwise
 {
     uint8_t value = value_p[0];
+    uint8_t value2 = value_p[1];
     union data_union {
       uint8_t send_data[4];
       struct{uint8_t a; uint8_t b; uint16_t status;} battery;
@@ -511,6 +512,9 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
     spi_iir_filter_enabled = spi_data_gen_enabled ? 0 : 1;
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
+
+    spi_encode_shift = (value2 & 0xF0) >> 4;
+    spi_encode_shift = spi_encode_shift > 14 ? 14 : spi_encode_shift;
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     
