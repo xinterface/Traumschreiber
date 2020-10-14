@@ -4,3 +4,6 @@
 [submodule "Traumschreiber-mobileEEG"]
 	path = Traumschreiber-mobileEEG
 	url = https://github.com/mvidaldp/Traumschreiber-mobileEEG
+[submodule "Experiments/code/pylsl-keyboard-trigger"]
+	path = Experiments/code/pylsl-keyboard-trigger
+	url = git@github.com:mvidaldp/pylsl-keyboard-trigger.git
