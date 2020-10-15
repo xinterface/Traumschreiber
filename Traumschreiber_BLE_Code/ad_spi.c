@@ -116,7 +116,6 @@ void spi_ble_notify(uint16_t notify)
         stb_read_position   = 0;
         stb_write_capacity  = 0;
         stb_read_capacity   = 0;
-        stb_characteristic  = 0;
     } else {
         spi_ble_notification_flag -= 1;
     }
@@ -414,7 +413,7 @@ void spi_data_sent()
     stb_read_position = (stb_read_position + stb_packet_size_r) % stb_buffer_length;
     stb_read_capacity -= stb_packet_size_r;
 
-    stb_characteristic = (stb_characteristic + 1) % 3;//AD_NUMBER; //update characteristic to send on next
+    stb_characteristic = (stb_characteristic + 1) % 3; //update characteristic to send on next
 
     send_packets_counter += 1;
 }
