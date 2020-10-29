@@ -64,6 +64,7 @@ APP_TIMER_DEF(m_spi_char_timer_id);
 ble_traum_t * spi_traum_service;
 bool spi_ble_connected_flag = false;
 uint8_t spi_ble_notification_flag = 0;
+uint8_t spi_ble_encodings_sent = 0;
 
 //uint8_t spi_bletrans_fullpackage_flag = 0; //it stores the packetnumber of the full-transmission-packages (if not active it has value 0)
 
@@ -74,7 +75,7 @@ static void spi_timer_timeout_handler(void * p_context)
 {
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
-if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) {
+if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
     //NRF_LOG_INFO("rec: %i, send: %i, skip: %i", collected_packets_counter, send_packets_counter, packetSkipCounter);
     //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
 }
@@ -89,7 +90,16 @@ if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) {
 void spi_ble_connect(ble_traum_t * p_traum_service)
 {
     spi_traum_service = p_traum_service;
+
+    //reset to initial values
+    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+        spi_encoded_values[i] = 0;
+        spi_estimated_variance[i] = 0<<28;
+    }
+    spi_adapt_encoding();
+
     spi_ble_connected_flag = true;
+    spi_ble_notification_flag = 0;
     NRF_LOG_INFO(" spi_ble_connect called");
 }
 void spi_ble_disconnect()
@@ -126,7 +136,7 @@ void spi_ble_notify(uint16_t notify)
 //initiates SPI-read
 void spi_transfer_ADread(uint8_t ad_id)
 {
-    if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) { //only read data from AD if BLE connection exists
+    if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) { //only read data from AD if BLE connection exists
 
        // Reset rx buffer
        memset(m_rx_buf[ad_id], 0, m_rlength);
@@ -177,7 +187,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context)
 {
     //only process data if there is a BLE-connection and someone listens for the data
-    if (spi_ble_connected_flag && spi_ble_notification_flag >= 3) {
+    if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
 
         uint8_t ad_id = *(uint8_t*)p_context;
 
@@ -213,6 +223,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                 if (spi_data_gen_enabled) {
                     for(int8_t i = 0;i < 8; i++) {
                         spi_data_gen_buf[i] = spi_data_gen_buf[i] + spi_data_gen_add;
+                        //spi_data_gen_buf[i] = spi_data_gen_buf[i] + (0x04 << (2*i));
                     }
 
                     //copy new data to spi_read_buffer from generation buffer
@@ -236,13 +247,20 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
 
                 //NRF_LOG_INFO("S: %02x%02x%02x%02x = %i", m_rx_buf[0][0], m_rx_buf[0][1], m_rx_buf[0][2], m_rx_buf[0][3], spi_channel_values[0]);
-
-
+                
             } //end IF here to wait for next round of packets if buffer is full
 
             ad_recieved[0] = false;
             ad_recieved[1] = false;
             ad_recieved[2] = false;
+            
+            //if recieved_packets_counter is reached, update signal_scaling
+            //it's out here to reset the ad_recieved more quickly
+            if (recieved_packets_counter >= 1000) {
+                //do stuff
+                spi_adapt_encoding();
+                recieved_packets_counter = 0;
+            }
         }
 
     }
@@ -344,10 +362,12 @@ void spi_encode_data(void)
     uint8_t n_byte = 0; //current byte
     int32_t c_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
-        c_value = (spi_filtered_values[n_channel] - spi_encoded_values[n_channel]) >> spi_encode_shift;
+        c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
+        spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*0.999 + 0.001*c_value*c_value;
+        c_value = c_value >> spi_encode_shift[n_channel];
         c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
         
-        spi_encoded_values[n_channel] += c_value << spi_encode_shift;
+        spi_encoded_values[n_channel] += c_value << spi_encode_shift[n_channel];
 
         c_bits_left = traum_bits_per_channel;
         while (c_bits_left) {
@@ -370,13 +390,59 @@ void spi_encode_data(void)
         }
     }
     
-    //debug info
-    recieved_packets_counter = (recieved_packets_counter + 1) % 15;
+    //counter, when to send signal_scaling (encoding_shift) update
+    recieved_packets_counter += 1;
 
     //update ringbuffer characteristics
     stb_write_position = (stb_write_position + stb_packet_size_w) % stb_buffer_length;
     stb_write_capacity += stb_packet_size_w;
     stb_read_capacity += stb_packet_size_w;
+}
+
+
+
+/**
+ * @brief Function to encode and write data to ring buffer
+ */
+void spi_adapt_encoding(void)
+{    
+    //resetting the send buffer
+    memset(spi_code_send_buf, 0, CODE_CHAR_VALUE_LENGTH);
+
+    float32_t required_bitrange;
+    uint8_t odd = 0;
+    
+    //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
+
+
+    for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) {
+        required_bitrange = sqrtf(spi_estimated_variance[n_channel]);
+        required_bitrange = log2f(required_bitrange);
+        spi_encode_shift[n_channel] = (uint32_t) ceilf(required_bitrange - traum_bits_per_channel);
+        
+        //if (n_channel < 8) {
+        //    NRF_LOG_INFO("ev: %i\t\t,rb: %i\t\tes: %i, o%i", spi_estimated_variance[n_channel], required_bitrange, spi_encode_shift[n_channel], odd);
+        //}
+        if (odd) {
+            spi_code_send_buf[n_channel/2] |= (0x0F & spi_encode_shift[n_channel]);
+            odd--;
+        } else {
+            spi_code_send_buf[n_channel/2] |= (0x0F & spi_encode_shift[n_channel]) << 4;
+            odd++;
+        }
+
+
+    }
+
+    //send packet
+    traum_encoding_char_update(spi_traum_service, spi_code_send_buf);
+
+    //account for extra BLE package (for the buffer status trackings)
+    spi_ble_encodings_sent += 1;
+    
+    //reset counter
+    recieved_packets_counter = 0;
+
 }
 
 
@@ -423,8 +489,15 @@ void spi_data_sent()
 void spi_ble_sent(uint8_t count)
 {
     //do only if there is a BLE-connection and someone listens for the data
-    if (spi_ble_connected_flag && spi_ble_notification_flag) {
+    if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
+        
+        //check if encoding update was in cue and account for it
+        if (spi_ble_encodings_sent > 0) {
+            count -= spi_ble_encodings_sent;
+            spi_ble_encodings_sent = 0;
+        }
 
+        //update buffers
         stb_write_capacity -= stb_packet_size_r * count;
         
         //call BLE send function to try to send another packet
@@ -514,8 +587,8 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
 
-    spi_encode_shift = (value2 & 0xF0) >> 4;
-    spi_encode_shift = spi_encode_shift > 14 ? 14 : spi_encode_shift;
+    //spi_encode_shift = (value2 & 0xF0) >> 4;
+    //spi_encode_shift = spi_encode_shift > 14 ? 14 : spi_encode_shift;
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     
@@ -667,6 +740,11 @@ void spi_init(void)
     for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         arm_biquad_cascade_df2T_init_f32(&iir_instance[i], IIR_NUMSTAGES, m_biquad_coeffs_167, m_biquad_state[i]);
     }
+
+
+    //initialize infos in encoding characteristic
+    traum_encoding_char_update(spi_traum_service, spi_code_send_buf);
+
 
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();

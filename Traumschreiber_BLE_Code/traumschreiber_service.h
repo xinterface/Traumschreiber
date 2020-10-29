@@ -52,10 +52,12 @@
 #define BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID     0xEE61 // Just a random, but recognizable value
 #define BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID     0xEE62 // Just a random, but recognizable value
 #define BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID       0xECC0 // Just a random, but recognizable value
+#define BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID       0xC0DE // Just a random, but recognizable value
 
 
 #define TRAUM_SERVICE_VALUE_LENGTH  20
 #define CONF_CHAR_VALUE_LENGTH  4
+#define CODE_CHAR_VALUE_LENGTH  12
 
 
 static uint8_t traum_use_only_one_characteristic = 0;
@@ -76,6 +78,7 @@ typedef struct
 	ble_gatts_char_handles_t    char_base_handle_0;
 	ble_gatts_char_handles_t    char_base_handle_1;
 	ble_gatts_char_handles_t    char_base_handle_2;
+	ble_gatts_char_handles_t    char_code_handle;
 	ble_gatts_char_handles_t    char_conf_handle;
 }ble_traum_t;
 
@@ -97,6 +100,7 @@ void traum_service_init(ble_traum_t * p_traum_service);
 
 void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service);
 void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data);
+void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data);
 
 
 

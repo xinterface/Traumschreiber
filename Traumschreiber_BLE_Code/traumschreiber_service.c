@@ -113,7 +113,7 @@ void traum_gpio_set(uint32_t value, uint32_t mask)
  * @param[in]   p_our_service        Our Service structure.
  *
  */
-static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t * init_value, uint16_t ble_uuid)
+static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t * init_value, uint8_t value_length, uint16_t ble_uuid)
 {
     // OUR_JOB: Step 2.A, Add a custom characteristic UUID
 	uint32_t            err_code;
@@ -168,7 +168,7 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
 
     
     // OUR_JOB: Step 2.H, Set characteristic length in number of bytes
-	attr_char_value.max_len     = TRAUM_SERVICE_VALUE_LENGTH;
+	attr_char_value.max_len     = value_length;
 	attr_char_value.init_len    = sizeof(init_value);
 	//uint8_t value[4]            = {0,0,0,0};
 	attr_char_value.p_value     = init_value;
@@ -190,7 +190,7 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
  * @param[in]   p_our_service        Our Service structure.
  *
  */
-static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t * init_value, uint16_t ble_uuid)
+static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_char_handles_t * char_handle, uint8_t * init_value, uint8_t value_length, uint16_t ble_uuid)
 {
    
     // OUR_JOB: Step 2.A, Add a custom characteristic UUID
@@ -242,8 +242,8 @@ static uint32_t traum_conf_char_add(ble_traum_t * p_traum_service, ble_gatts_cha
 
     
     // OUR_JOB: Step 2.H, Set characteristic length in number of bytes
-	attr_char_value.max_len     = CONF_CHAR_VALUE_LENGTH;
-	attr_char_value.init_len    = CONF_CHAR_VALUE_LENGTH;//sizeof(init_value);
+	attr_char_value.max_len     = value_length;
+	attr_char_value.init_len    = value_length;
 	//uint8_t value[2]            = {0};
 	attr_char_value.p_value     = init_value;
 	
@@ -292,16 +292,20 @@ void traum_service_init(ble_traum_t * p_traum_service)
 	
 	// OUR_JOB: Call the function our_char_add() to add our new characteristic to the service.
         uint8_t value0[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_0, value0, BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID);
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_0, value0, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID);
         uint8_t value1[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_1, value1, BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID);
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_1, value1, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID);
         uint8_t value2[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID);
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID);
+        //add characteristic for encoding parameters
+        uint8_t value_encoding[CODE_CHAR_VALUE_LENGTH]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_code_handle, value_encoding, CODE_CHAR_VALUE_LENGTH, BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID);
         
         //add characteristic for config
         uint8_t value_conf[CONF_CHAR_VALUE_LENGTH] = {0x00};
-        traum_conf_char_add(p_traum_service, &p_traum_service->char_conf_handle, value_conf, BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID);
- 
+        traum_conf_char_add(p_traum_service, &p_traum_service->char_conf_handle, value_conf, CONF_CHAR_VALUE_LENGTH, BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID);
+        
+        
 	
     // Print messages to Segger Real Time Terminal
     // UNCOMMENT THE FOUR LINES BELOW AFTER INITIALIZING THE SERVICE OR THE EXAMPLE WILL NOT COMPILE.
@@ -405,5 +409,35 @@ void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data)
             err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
     NRF_LOG_INFO("TBU 3.");
     NRF_LOG_FLUSH();
+    }
+}
+
+
+// Function to be called when updating encoding characteristic value
+void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data)
+{
+    //NRF_LOG_INFO("TEU 0.");
+    //NRF_LOG_FLUSH();
+    if (p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) {
+    //NRF_LOG_INFO("TEU 1.");
+    //NRF_LOG_FLUSH();
+
+            uint32_t       err_code;
+
+            uint16_t               len = CODE_CHAR_VALUE_LENGTH;
+            ble_gatts_hvx_params_t hvx_params;
+            memset(&hvx_params, 0, sizeof(hvx_params));
+
+            hvx_params.handle = p_traum_service->char_code_handle.value_handle;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+            hvx_params.offset = 0;
+            hvx_params.p_len  = &len;
+            hvx_params.p_data = data;
+
+    //NRF_LOG_INFO("TEU 2.");
+    //NRF_LOG_FLUSH();
+            err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
+    //NRF_LOG_INFO("TEU 3.");
+    //NRF_LOG_FLUSH();
     }
 }

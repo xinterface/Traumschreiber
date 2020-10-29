@@ -149,11 +149,16 @@ static uint8_t  spi_iir_filter_enabled = 1;
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1
 static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
-static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL];
+static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
+static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
-static uint32_t  spi_encode_shift     = 0x06; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
+static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x04}; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
+
+static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX buffer. */
+#define FACTOR_SAFE_ENCO 8
+
 
 //BLE send ring buffer
 #define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)
@@ -168,6 +173,8 @@ static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //neede
 static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
 static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
+
+
 
 //Debug Data Generation
 #define SPI_DATA_GEN_FLAG   0
@@ -214,6 +221,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 void spi_filter_data(void);
 void spi_encode_data_old(void);
 void spi_encode_data(void);
+void spi_adapt_encoding(void);
 
 void spi_ble_connect(ble_traum_t * p_traum_service);
 void spi_ble_disconnect();

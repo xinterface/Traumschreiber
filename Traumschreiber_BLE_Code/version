@@ -14,7 +14,8 @@ works:
 		turned on by default, deactivated if dummy data is transmitted
 	encoding
 		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
-			values are shifted (aka least significant Bits are dropped)
+			values are shifted (aka least significant Bits are dropped) according to current variance
+			amount of shifting is pushed out via 'C0DE' characteristic every 1000 data points
 		old code is still there, activatable via compilation flag
 			(sending first 6 channels of first AD in full width, dropping the rest)
 	dummy data generation
@@ -30,7 +31,7 @@ works:
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
 			oooo oxoo: if set, data is only send via first characteristic
 		2nd Byte:
-			xxxx oooo: how many Bits the difference value is shifted, befor it is encoded (aka, how many least significant Bits are dropped). default: 6
+			reserved
 		3rd and 4th Byte: debug/controll data. for example battery status.
 		
 		
