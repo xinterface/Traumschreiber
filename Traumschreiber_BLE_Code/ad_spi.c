@@ -66,6 +66,8 @@ bool spi_ble_connected_flag = false;
 uint8_t spi_ble_notification_flag = 0;
 uint8_t spi_ble_encodings_sent = 0;
 
+uint8_t spi_ble_send_devision = 0;
+
 //uint8_t spi_bletrans_fullpackage_flag = 0; //it stores the packetnumber of the full-transmission-packages (if not active it has value 0)
 
 
@@ -369,6 +371,12 @@ void spi_encode_data(void)
         
         spi_encoded_values[n_channel] += c_value << spi_encode_shift[n_channel];
 
+//        if (n_channel < 8) {
+//            NRF_LOG_INFO("%i|ev: %i\t\t,cv: %i\t\tc2: %i, env%i", n_channel, spi_estimated_variance[n_channel], c_value, 0.1*c_value*c_value, spi_encoded_values[n_channel]);
+//            NRF_LOG_INFO("c2" NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(0.1*c_value*c_value));
+//            NRF_LOG_FLUSH();
+//        }
+
         c_bits_left = traum_bits_per_channel;
         while (c_bits_left) {
           write_bits = MIN(b_bits_left,c_bits_left);
@@ -419,10 +427,12 @@ void spi_adapt_encoding(void)
         required_bitrange = sqrtf(spi_estimated_variance[n_channel]);
         required_bitrange = log2f(required_bitrange);
         spi_encode_shift[n_channel] = (uint32_t) ceilf(required_bitrange - traum_bits_per_channel);
-        
-        //if (n_channel < 8) {
-        //    NRF_LOG_INFO("ev: %i\t\t,rb: %i\t\tes: %i, o%i", spi_estimated_variance[n_channel], required_bitrange, spi_encode_shift[n_channel], odd);
-        //}
+        //check valid range???? ##
+
+//        if (n_channel < 8) {
+//            NRF_LOG_INFO("%i|ev: %i\t\t,rb: %i\t\tes: %i, o%i", n_channel, spi_estimated_variance[n_channel], required_bitrange, spi_encode_shift[n_channel], odd);
+//            NRF_LOG_FLUSH();
+//        }
         if (odd) {
             spi_code_send_buf[n_channel/2] |= (0x0F & spi_encode_shift[n_channel]);
             odd--;
@@ -587,7 +597,10 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
 
-    //spi_encode_shift = (value2 & 0xF0) >> 4;
+    //workaround for slowdown measurements.
+    spi_ble_send_devision = (value2 & 0xF0) >> 4;
+    triggerSkipCounterMax = 2 + spi_ble_send_devision;
+
     //spi_encode_shift = spi_encode_shift > 14 ? 14 : spi_encode_shift;
 
     NRF_LOG_INFO("SPI config updated.");

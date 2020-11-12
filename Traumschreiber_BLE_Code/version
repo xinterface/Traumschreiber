@@ -31,6 +31,7 @@ works:
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
 			oooo oxoo: if set, data is only send via first characteristic
 		2nd Byte:
+			xxxx oooo: slowdown (1: ~4/5, 2: 3/5, 3: 1/2, ...), experimental debug feature
 			reserved
 		3rd and 4th Byte: debug/controll data. for example battery status.
 		
