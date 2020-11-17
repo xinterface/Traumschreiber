@@ -121,7 +121,7 @@ void spi_ble_disconnect()
 //keeping track whether BLE stack has notifications enabled.
 void spi_ble_notify(uint16_t notify)
 {
-    if (notify == 1) {
+    if (notify >= 1) { //can be 1, 2 or 3, depending on notification, indication or both
         spi_ble_notification_flag += 1;
         //resetting buffers
         stb_write_position  = 0;
