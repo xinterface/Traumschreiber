@@ -66,7 +66,6 @@ bool spi_ble_connected_flag = false;
 uint8_t spi_ble_notification_flag = 0;
 uint8_t spi_ble_encodings_sent = 0;
 
-uint8_t spi_ble_send_devision = 0;
 
 //uint8_t spi_bletrans_fullpackage_flag = 0; //it stores the packetnumber of the full-transmission-packages (if not active it has value 0)
 
@@ -129,6 +128,10 @@ void spi_ble_notify(uint16_t notify)
         stb_write_capacity  = 0;
         stb_read_capacity   = 0;
         stb_characteristic  = 0;
+        spi_enc_estimate_factor_9 = 0.9;
+        spi_enc_estimate_factor_1 = 0.1;
+        spi_enc_warmup = 1;
+        recieved_packets_counter = 0;
     } else {
         spi_ble_notification_flag -= 1;
     }
@@ -365,7 +368,7 @@ void spi_encode_data(void)
     int32_t c_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
-        spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*0.999 + 0.001*c_value*c_value;
+        spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value*c_value;
         c_value = c_value >> spi_encode_shift[n_channel];
         c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
         
@@ -425,7 +428,7 @@ void spi_adapt_encoding(void)
 
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) {
         required_bitrange = sqrtf(spi_estimated_variance[n_channel]);
-        required_bitrange = log2f(required_bitrange);
+        required_bitrange = log2f(required_bitrange*spi_enc_factor_safe_encoding);
         spi_encode_shift[n_channel] = (uint32_t) ceilf(required_bitrange - traum_bits_per_channel);
         //check valid range???? ##
 
@@ -452,6 +455,13 @@ void spi_adapt_encoding(void)
     
     //reset counter
     recieved_packets_counter = 0;
+
+    //check for warmup
+    if (spi_enc_warmup == 1) {
+        spi_enc_warmup = 0;
+        spi_enc_estimate_factor_9 = 0.999;
+        spi_enc_estimate_factor_1 = 0.001;
+    }
 
 }
 
@@ -582,7 +592,7 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
     uint8_t tx_buf[] = {0x00, cc, 0x01, cc, 0x02, cc, 0x03, cc, 0x04, cc, 0x05, cc, 0x06, cc, 0x07, cc,}; //len 16
     uint8_t tx_buf_len = 16;
 
-    for(int i=1;i<AD_NUMBER;i++) {
+    for(int i=1;i<AD_NUMBER;i++) { //## why does it start at 1???
         uint32_t err_code = nrf_drv_spi_transfer(&spi[i], tx_buf, tx_buf_len, m_rx_buf[i], tx_buf_len);
         
         NRF_LOG_INFO("spi conf 02.%i: %04x", i, err_code);
@@ -597,11 +607,13 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
 
-    //workaround for slowdown measurements.
-    spi_ble_send_devision = (value2 & 0xF0) >> 4;
-    triggerSkipCounterMax = 2 + spi_ble_send_devision;
+    ////workaround for slowdown measurements.
+    //spi_ble_send_devision = (value2 & 0xF0) >> 4;
+    //triggerSkipCounterMax = 2 + spi_ble_send_devision;
 
-    //spi_encode_shift = spi_encode_shift > 14 ? 14 : spi_encode_shift;
+    //update factor safe encoding
+    spi_enc_factor_safe_encoding = (value2 & 0xF0) >> 4;
+    spi_enc_factor_safe_encoding = spi_enc_factor_safe_encoding == 0 ? 1 : spi_enc_factor_safe_encoding;
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     

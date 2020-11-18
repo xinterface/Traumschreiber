@@ -155,9 +155,14 @@ static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
 static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x04}; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
+#define SPI_FACTOR_SAFE_ENCODING_DEFAULT   8
+static uint8_t spi_enc_factor_safe_encoding = SPI_FACTOR_SAFE_ENCODING_DEFAULT;
+static uint8_t spi_ble_send_devision = 0;
+static float32_t spi_enc_estimate_factor_9 = 0.999;
+static float32_t spi_enc_estimate_factor_1 = 0.001;
+static uint8_t spi_enc_warmup = 1;
 
 static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX buffer. */
-#define FACTOR_SAFE_ENCO 8
 
 
 //BLE send ring buffer
