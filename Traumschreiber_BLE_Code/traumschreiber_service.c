@@ -299,7 +299,7 @@ void traum_service_init(ble_traum_t * p_traum_service)
         traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID, 1, 0);
         //add characteristic for encoding parameters
         uint8_t value_encoding[CODE_CHAR_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_code_handle, value_encoding, CODE_CHAR_VALUE_LENGTH, BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID, 0, 1);
+        traum_char_add(p_traum_service, &p_traum_service->char_code_handle, value_encoding, CODE_CHAR_VALUE_LENGTH, BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID, 1, 0);
         
         //add characteristic for config
         uint8_t value_conf[CONF_CHAR_VALUE_LENGTH] = {0x00};
@@ -429,7 +429,7 @@ void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data)
             memset(&hvx_params, 0, sizeof(hvx_params));
 
             hvx_params.handle = p_traum_service->char_code_handle.value_handle;
-            hvx_params.type   = BLE_GATT_HVX_INDICATION;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
             hvx_params.offset = 0;
             hvx_params.p_len  = &len;
             hvx_params.p_data = data;
