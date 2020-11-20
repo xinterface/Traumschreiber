@@ -15,7 +15,7 @@ works:
 	encoding
 		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
 			values are shifted (aka least significant Bits are dropped) according to current variance
-			amount of shifting is pushed out via 'C0DE' characteristic every 1000 data points as notification
+			amount of shifting is pushed out via 'C0DE' characteristic every 1000 data points as indication
 		old code is still there, activatable via compilation flag
 			(sending first 6 channels of first AD in full width, dropping the rest)
 	dummy data generation
