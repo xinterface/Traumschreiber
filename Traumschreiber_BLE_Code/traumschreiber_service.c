@@ -142,8 +142,8 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
 	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 	cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
 	char_md.p_cccd_md           = &cccd_md;
-	char_md.char_props.notify   = p_notify;
-	char_md.char_props.indicate = p_indicate;
+	char_md.char_props.notify   = 1; //Quick and dirty fix, ignoring the function parameters
+	char_md.char_props.indicate = 0;
 
    
     
