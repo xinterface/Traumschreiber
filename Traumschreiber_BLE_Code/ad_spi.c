@@ -77,7 +77,7 @@ static void spi_timer_timeout_handler(void * p_context)
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
 if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
-    //NRF_LOG_INFO("rec: %i, send: %i, skip: %i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+    //NRF_LOG_INFO("=rec: %i, send: %i, skip: %i", collected_packets_counter, send_packets_counter, packetSkipCounter);
     //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
 }
     collected_packets_counter = 0;
@@ -452,7 +452,8 @@ void spi_adapt_encoding(void)
 
     //account for extra BLE package (for the buffer status trackings)
     spi_ble_encodings_sent += 1;
-    
+    //NRF_LOG_INFO("==en up: %i/%i", stb_write_capacity, stb_read_capacity);
+
     //reset counter
     recieved_packets_counter = 0;
 
@@ -521,7 +522,7 @@ void spi_ble_sent(uint8_t count)
         stb_write_capacity -= stb_packet_size_r * count;
         
         //call BLE send function to try to send another packet
-        traum_eeg_data_characteristic_update(spi_traum_service);
+        //traum_eeg_data_characteristic_update(spi_traum_service);
     }
 }
 
