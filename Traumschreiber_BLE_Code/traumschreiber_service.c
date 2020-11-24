@@ -142,7 +142,7 @@ static uint32_t traum_char_add(ble_traum_t * p_traum_service, ble_gatts_char_han
 	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 	cccd_md.vloc                = BLE_GATTS_VLOC_STACK;    
 	char_md.p_cccd_md           = &cccd_md;
-	char_md.char_props.notify   = p_notify
+	char_md.char_props.notify   = p_notify;
 	char_md.char_props.indicate = p_indicate;
 
    
@@ -348,7 +348,7 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
             }
 
             hvx_params.handle = value_handle;
-            hvx_params.type   = BLE_GATT_HVX_INDICATION;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
             hvx_params.offset = 0;
             hvx_params.p_len  = &len;
             hvx_params.p_data = spi_get_data_pointer(); //returns a (unit8_t*) to next data chunk
