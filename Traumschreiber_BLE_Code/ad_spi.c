@@ -77,7 +77,7 @@ static void spi_timer_timeout_handler(void * p_context)
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
 if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
-    //NRF_LOG_INFO("=rec: %i, send: %i, skip: %i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+    //NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i\t%i-%i=%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_capacity, stb_write_position, stb_read_position);
     //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
 }
     collected_packets_counter = 0;
@@ -227,7 +227,8 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
                 if (spi_data_gen_enabled) {
                     for(int8_t i = 0;i < 8; i++) {
-                        spi_data_gen_buf[i] = spi_data_gen_buf[i] + spi_data_gen_add;
+                        //spi_data_gen_buf[i] = spi_data_gen_buf[i] + spi_data_gen_add;
+                        spi_data_gen_buf[i] = spi_data_gen_buf[i]*(-1);
                         //spi_data_gen_buf[i] = spi_data_gen_buf[i] + (0x04 << (2*i));
                     }
 

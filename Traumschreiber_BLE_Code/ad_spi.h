@@ -186,8 +186,8 @@ static uint8_t         stb_characteristic  = 0; //which characteristic to send o
 static uint8_t  spi_data_gen_enabled = SPI_DATA_GEN_FLAG;
 static uint8_t  spi_data_gen_use_half = 0;
 #define SPI_DATA_GEN_BASE_32   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-static uint32_t  spi_data_gen_buf[8] = SPI_DATA_GEN_BASE_32;
-static uint16_t spi_data_gen_add = 0x000102;
+static const uint16_t spi_data_gen_add = 0x000102;
+static int32_t  spi_data_gen_buf[8] = {spi_data_gen_add};
 
 
 // timer event handler
