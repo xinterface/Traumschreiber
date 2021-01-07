@@ -86,7 +86,7 @@ void ble_traum_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
                     //it is kept (commented out) because it would be a useful check and might be available in future sdk's
                     //until then spi_ble_sent() keeps track of connection/notification status as replacement
                     //if (p_ble_evt->evt.gatts_evt.params.hvc.handle == p_traum_service->char_base_handle.value_handle) {
-                        spi_ble_sent(p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
+//                        spi_ble_sent(p_ble_evt->evt.gatts_evt.params.hvn_tx_complete.count);
                     //    traum_eeg_data_characteristic_update(p_traum_service);//try to send new data
                     //}
                     break;

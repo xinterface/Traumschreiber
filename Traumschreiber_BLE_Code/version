@@ -7,7 +7,8 @@ works:
 		packages are (by default) distributed over three characteristics
 		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
 		in 20 Byte packets
-		trying to send on each recieved AD packet or if data has been sent (via BLE)
+		trying to send on each recieved AD packet
+			buffer-full check is now dirty (just checks if there is at least 7 packets read capacity plus new package and ignores write capacity)
 	filtering
 		biquad cascade IIR filter from arm_math package for M4
 			one instance per channel

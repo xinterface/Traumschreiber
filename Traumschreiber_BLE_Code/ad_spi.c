@@ -77,7 +77,7 @@ static void spi_timer_timeout_handler(void * p_context)
    // NRF_LOG_INFO("one sec");
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
 if (spi_ble_connected_flag && spi_ble_notification_flag >= 4) {
-    //NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i\t%i-%i=%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_capacity, stb_write_position, stb_read_position);
+    //NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i/%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_capacity, stb_read_capacity);
     //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
 }
     collected_packets_counter = 0;
@@ -130,6 +130,7 @@ void spi_ble_notify(uint16_t notify)
         stb_characteristic  = 0;
         spi_enc_estimate_factor_9 = 0.9;
         spi_enc_estimate_factor_1 = 0.1;
+        spi_enc_estimate_factor_5 = 1.4;
         spi_enc_warmup = 1;
         recieved_packets_counter = 0;
     } else {
@@ -216,7 +217,8 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
             spi_filter_data();
 
             //if there is space in spi_send_buffer
-            if (stb_write_capacity + stb_packet_size_w > stb_buffer_length) {
+            if (stb_read_capacity + stb_read_capacity_safety + stb_packet_size_w > stb_buffer_length) {
+            //if (stb_write_capacity + stb_packet_size_w > stb_buffer_length) {
                 //NRF_LOG_INFO(" stb full (c:%i)", stb_write_capacity);
                 packetSkipCounter += 1;
                 //return;
@@ -231,6 +233,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                         spi_data_gen_buf[i] = spi_data_gen_buf[i]*(-1);
                         //spi_data_gen_buf[i] = spi_data_gen_buf[i] + (0x04 << (2*i));
                     }
+                    NRF_LOG_INFO("gen: %i/%i+%i\tc: %i\t%i-%i", spi_data_gen_buf[0], spi_data_gen_buf[1], spi_data_gen_buf[2], spi_data_gen_buf[3], spi_data_gen_buf[4], spi_data_gen_buf[5]);
 
                     //copy new data to spi_read_buffer from generation buffer
                     //it seems that there is a little/big endian mixup here (ad is other order than ble chip), but since for counters that does not matter for values <256, this is ignored
@@ -367,9 +370,17 @@ void spi_encode_data(void)
     //go by channel then byte
     uint8_t n_byte = 0; //current byte
     int32_t c_value = 0;
+    float32_t s_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
-        spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value*c_value;
+        //spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value*c_value;
+        s_value = (float32_t)c_value*(float32_t)c_value;
+        //discarding outliers
+        if (s_value > 5*spi_estimated_variance[n_channel]) {
+            spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_5;
+        } else {
+            spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*s_value;
+        }
         c_value = c_value >> spi_encode_shift[n_channel];
         c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
         
@@ -463,6 +474,7 @@ void spi_adapt_encoding(void)
         spi_enc_warmup = 0;
         spi_enc_estimate_factor_9 = 0.999;
         spi_enc_estimate_factor_1 = 0.001;
+        spi_enc_estimate_factor_5 = 1.004;
     }
 
 }
