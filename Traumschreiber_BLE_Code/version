@@ -8,7 +8,7 @@ works:
 		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
 		in 20 Byte packets
 		trying to send on each recieved AD packet
-			buffer-full check is now dirty (just checks if there is at least 7 packets read capacity plus new package and ignores write capacity)
+			buffer-full check is now dirty (just checks if there is at least 20 packets read capacity plus new package and ignores write capacity)
 	filtering
 		biquad cascade IIR filter from arm_math package for M4
 			one instance per channel
@@ -17,13 +17,15 @@ works:
 		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
 			values are shifted (aka least significant Bits are dropped) according to current variance
 			amount of shifting is pushed out via 'C0DE' characteristic every 1000 data points as notification
-		old code is still there, activatable via compilation flag
-			(sending first 6 channels of first AD in full width, dropping the rest)
 	dummy data generation
 		can be toggeled via config characteristic (see below)
 		data gets generated every time a sample from the ADs come in
 		it is possible to have generated and sampled data (see below)
 		only generates 8 channels anyways
+	battery reading
+		works now
+		AUXAIN register of AD1 (of 0-2) is read and written into byte 3&4 of config characteristic
+		happens at startup and if notifications are disabled on one characteristic (of 4)
 	configuration characteristic (4 Bytes total)
 		1st Byte:
 			xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
@@ -42,4 +44,4 @@ constraints:
 		still 250Hz of packages is send
 	error output
 		none, if transmitting with new encoding
-
+	

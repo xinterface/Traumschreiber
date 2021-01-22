@@ -126,7 +126,12 @@ static uint8_t triggerSkipCounterMax = 2; // how many events are skipped (each '
 
 static uint16_t packetSkipCounter = 0;
 
-static bool  ad_recieved[] = {false, false, false};
+
+extern bool spi_ble_connected_flag;
+extern uint8_t spi_ble_notification_flag;
+extern uint8_t spi_ble_notification_threshold;
+extern bool  ad_recieved[];
+extern bool  ad_converted[];
 
 
 //debug
@@ -168,7 +173,6 @@ static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX b
 
 //BLE send ring buffer
 #define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)
-static uint8_t  spi_ble_use_new_encoding = SPI_BLE_USE_NEW_ENCODING_FLAG;
 #define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*48
 static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
 static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
@@ -179,9 +183,15 @@ static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //neede
 static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
 static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
-static uint16_t        stb_read_capacity_safety  = 20*stb_packet_size_r; //used
+static uint16_t        stb_read_capacity_safety  = 20*TRAUM_SERVICE_VALUE_LENGTH; //used. actual buffer size seems to be 5/char=15, plus some extra
 
 
+//static uint16_t traumschreiber_battery_status = 0;
+union data_union {
+    uint8_t send_data[4];
+    struct{uint8_t byte_0; uint8_t byte_1; uint16_t battery_status;} reg;
+} static spi_config_register;
+extern bool battery_read;
 
 
 //Debug Data Generation
@@ -226,14 +236,14 @@ static void gpio_init(void);
  */
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context);
+void spi_data_conversion(uint8_t ad_id);
 void spi_filter_data(void);
-void spi_encode_data_old(void);
 void spi_encode_data(void);
 void spi_adapt_encoding(void);
 
 void spi_ble_connect(ble_traum_t * p_traum_service);
 void spi_ble_disconnect();
-void spi_ble_notify(uint16_t notify);
+void spi_ble_notify(uint16_t notify, ble_traum_t * p_traum_service);
 
 
 int8_t spi_new_data(void);
@@ -241,6 +251,8 @@ uint8_t* spi_get_data_pointer(void);
 void spi_data_sent(void);
 void spi_ble_sent(uint8_t count);
 
+void spi_read_battery_status();
+void spi_send_battery_status();
 void spi_config_update(const uint8_t * value_p);
 void spi_init(void);
 

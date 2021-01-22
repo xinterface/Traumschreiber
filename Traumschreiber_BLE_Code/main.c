@@ -160,24 +160,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 }
 
 
-
-// ALREADY_DONE_FOR_YOU: This is a timer event handler
-static void traum_timer_timeout_handler(void * p_context)
-{
-    // OUR_JOB: Step 3.F, Update temperature and characteristic value.
-	int32_t temperature = 0;   
-	sd_temp_get(&temperature);
-	//traum_temperature_characteristic_update(&m_traum_service, &temperature);
-	nrf_gpio_pin_toggle(LED_4);
-	
-        uint32_t pin_number = 1;
-        NRF_GPIO_Type * reg = nrf_gpio_pin_port_decode(&pin_number);
-
-        //temperature = ((nrf_gpio_port_in_read(reg)) & 0xFFFFFFFFUL);
-        traum_eeg_data_characteristic_update(&m_traum_service);//, &temperature);
-}
-
-
 /**@brief Function for handling Peer Manager events.
  *
  * @param[in] p_evt  Peer Manager event.
@@ -209,19 +191,6 @@ static void timers_init(void)
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-    // Create timers.
-
-    /* YOUR_JOB: Create any timers to be used by the application.
-                 Below is an example of how to create a timer.
-                 For every new timer needed, increase the value of the macro APP_TIMER_MAX_TIMERS by
-                 one.
-       ret_code_t err_code;
-       err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-       APP_ERROR_CHECK(err_code); */
-	
-	
-    // OUR_JOB: Step 3.H, Initiate our timer
-	//app_timer_create(&m_traum_char_timer_id, APP_TIMER_MODE_REPEATED, traum_timer_timeout_handler);
 }
 
 
@@ -320,30 +289,7 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    /* YOUR_JOB: Add code to initialize the services used by the application.
-       ble_xxs_init_t                     xxs_init;
-       ble_yys_init_t                     yys_init;
-
-       // Initialize XXX Service.
-       memset(&xxs_init, 0, sizeof(xxs_init));
-
-       xxs_init.evt_handler                = NULL;
-       xxs_init.is_xxx_notify_supported    = true;
-       xxs_init.ble_xx_initial_value.level = 100;
-
-       err_code = ble_bas_init(&m_xxs, &xxs_init);
-       APP_ERROR_CHECK(err_code);
-
-       // Initialize YYY Service.
-       memset(&yys_init, 0, sizeof(yys_init));
-       yys_init.evt_handler                  = on_yys_evt;
-       yys_init.ble_yy_initial_value.counter = 0;
-
-       err_code = ble_yy_service_init(&yys_init, &yy_init);
-       APP_ERROR_CHECK(err_code);
-     */
-
-	traum_service_init(&m_traum_service);
+    traum_service_init(&m_traum_service);
 
 }
 
@@ -407,15 +353,7 @@ static void conn_params_init(void)
  */
 static void application_timers_start(void)
 {
-    /* YOUR_JOB: Start your timers. below is an example of how to start a timer.
-       ret_code_t err_code;
-       err_code = app_timer_start(m_app_timer_id, TIMER_INTERVAL, NULL);
-       APP_ERROR_CHECK(err_code); */
-	
-	
-    // OUR_JOB: Step 3.I, Start our timer
-	//app_timer_start(m_traum_char_timer_id, TRAUM_CHAR_TIMER_INTERVAL, NULL);
-
+//do nothing
 }
 
 
@@ -688,7 +626,7 @@ static void buttons_leds_init(bool * p_erase_bonds)
     nrf_gpio_pin_write(20, 0);
     
     nrf_gpio_cfg_output(18); //pin 18 is also debug LED of Traumschreiber
-    nrf_gpio_pin_write(18, 0);
+    nrf_gpio_pin_write(18, 1);
 }
 
 
@@ -781,10 +719,26 @@ int main(void)
 
     advertising_start(erase_bonds);
 
+//    nrf_gpio_pin_write(20, 1);
+//    nrf_gpio_pin_write(18, 1);
+
     // Enter main loop.
     for (;;)
     {
         idle_state_handle();
+//        NRF_LOG_INFO("I returned from the dead");
+//        NRF_LOG_FLUSH();
+        if (spi_ble_connected_flag && spi_ble_notification_flag >= spi_ble_notification_threshold) {
+            //if there is new AD data available, read it out. Also encode it, if data from all ADs is there.
+            if (ad_recieved[0]) spi_data_conversion(0);
+            if (ad_recieved[1]) spi_data_conversion(1);
+            if (ad_recieved[2]) spi_data_conversion(2);
+            
+            //call BLE send function to try to send the received data
+            traum_eeg_data_characteristic_update(&m_traum_service);
+        } else {
+            if (battery_read && ad_recieved[1]) spi_send_battery_status();
+        }
     }
 }
 
