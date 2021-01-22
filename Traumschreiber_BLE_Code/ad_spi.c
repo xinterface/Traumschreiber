@@ -251,14 +251,13 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                     spi_encode_data_old();
                 }
 
-                //call BLE send function to try to send the received data
-                traum_eeg_data_characteristic_update(spi_traum_service);
-
-
                 //NRF_LOG_INFO("S: %02x%02x%02x%02x = %i", m_rx_buf[0][0], m_rx_buf[0][1], m_rx_buf[0][2], m_rx_buf[0][3], spi_channel_values[0]);
                 
             } //end IF here to wait for next round of packets if buffer is full
 
+            //call BLE send function to try to send the received data
+            traum_eeg_data_characteristic_update(spi_traum_service);
+                
             ad_recieved[0] = false;
             ad_recieved[1] = false;
             ad_recieved[2] = false;

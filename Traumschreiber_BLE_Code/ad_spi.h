@@ -169,7 +169,7 @@ static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX b
 //BLE send ring buffer
 #define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)
 static uint8_t  spi_ble_use_new_encoding = SPI_BLE_USE_NEW_ENCODING_FLAG;
-#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*24
+#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*48
 static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
 static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
 static uint16_t        stb_write_position  = 0;
@@ -179,7 +179,7 @@ static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //neede
 static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
 static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
-static uint16_t        stb_read_capacity_safety  = 7*stb_packet_size_r; //used
+static uint16_t        stb_read_capacity_safety  = 20*stb_packet_size_r; //used
 
 
 
