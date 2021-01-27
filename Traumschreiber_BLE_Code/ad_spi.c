@@ -97,7 +97,7 @@ void spi_ble_connect(ble_traum_t * p_traum_service)
     //reset to initial values
     for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         spi_encoded_values[i] = 0;
-        spi_estimated_variance[i] = 0<<28;
+        spi_estimated_variance[i] = 1<<11; //11 is abitrary, results to 2048. needs to be positive and != 0
     }
     spi_adapt_encoding();
 
@@ -425,7 +425,9 @@ void spi_adapt_encoding(void)
         required_bitrange = log2f(required_bitrange*spi_enc_factor_safe_encoding);
         spi_encode_shift[n_channel] = (uint32_t) ceilf(required_bitrange - traum_bits_per_channel);
         //check valid range???? ##
-
+        
+        //NRF_LOG_INFO("%i, ev: %i\t,rb: %i\tes: %i", n_channel, spi_estimated_variance[n_channel], required_bitrange, spi_encode_shift[n_channel]);
+        
         if (odd) {
             spi_code_send_buf[n_channel/2] |= (0x0F & spi_encode_shift[n_channel]);
             odd--;

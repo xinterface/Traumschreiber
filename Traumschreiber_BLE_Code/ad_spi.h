@@ -155,7 +155,7 @@ static uint8_t  spi_iir_filter_enabled = 1;
 static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
-static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0};
+static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
@@ -199,8 +199,8 @@ extern bool battery_read;
 static uint8_t  spi_data_gen_enabled = SPI_DATA_GEN_FLAG;
 static uint8_t  spi_data_gen_use_half = 0;
 #define SPI_DATA_GEN_BASE_32   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-static const uint16_t spi_data_gen_add = 0x000102;
-static int32_t  spi_data_gen_buf[8] = {spi_data_gen_add,0x10,-0x20,-0x30,0x40,0x50,-0x60,0x70};
+static const uint16_t spi_data_gen_add = 0x000201;
+static int32_t  spi_data_gen_buf[8] = {spi_data_gen_add,0x10,0x100,0x1000,-spi_data_gen_add,-0x10,-0x100,-0x1000};
 
 
 // timer event handler
