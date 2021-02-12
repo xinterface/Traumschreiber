@@ -622,10 +622,10 @@ static void buttons_leds_init(bool * p_erase_bonds)
 
     *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
     
-    nrf_gpio_cfg_output(20); //pin 20 is debug LED of Traumschreiber
-    nrf_gpio_pin_write(20, 0);
+    nrf_gpio_cfg_output(20); //pin 20 is debug LED of Traumschreiber, low active
+    nrf_gpio_pin_write(20, 1);
     
-    nrf_gpio_cfg_output(18); //pin 18 is also debug LED of Traumschreiber
+    nrf_gpio_cfg_output(18); //pin 18 is also debug LED of Traumschreiber, low active
     nrf_gpio_pin_write(18, 1);
 }
 

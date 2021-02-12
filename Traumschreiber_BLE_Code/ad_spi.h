@@ -131,7 +131,7 @@ extern bool spi_ble_connected_flag;
 extern uint8_t spi_ble_notification_flag;
 extern uint8_t spi_ble_notification_threshold;
 extern bool  ad_recieved[];
-extern bool  ad_converted[];
+extern uint8_t  ad_converted[];
 
 
 //debug
@@ -142,13 +142,34 @@ static uint16_t  collected_packets_counter     = 0;
 
 
 //filtering
-#define IIR_ORDER     4
+//notch
+#define IIR_ORDER     8
 #define IIR_NUMSTAGES (IIR_ORDER/2)
 static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
-static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] = {0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321};
-static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.9007, 0.4943, 0.9007, -0.4241, -0.8993, 1.0000, 0.5488, 1.0000, -0.6163, -0.9022};
+//static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] = {0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321};
+//static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.9007, 0.4943, 0.9007, -0.4241, -0.8993, 1.0000, 0.5488, 1.0000, -0.6163, -0.9022};
+//static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.8988, 0.5571, 0.8988, -0.4899, -0.8972, 1.0000, 0.6198, 1.0000, -0.6838, -0.9005};
+//static float32_t m_biquad_coeffs_500[5*IIR_NUMSTAGES] = {0.9314, -1.5089, 0.9314, 1.5196, -0.9281, 1.0000, -1.6201, 1.0000, 1.6056, -0.9346};
+static float32_t m_biquad_coeffs_500_45_o4[5*2] = {9.1496915e-01, -1.4833783e+00, 9.1496915e-01, 1.4952379e+00, -9.0997660e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.6035019e+00, -9.2000347e-01};
+static float32_t m_biquad_coeffs_500_45_o6[5*3] = {8.8183820e-01, -1.4296653e+00, 8.8183820e-01, 1.5252712e+00, -8.8161862e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.5017873e+00, -9.3475473e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.6330429e+00, -9.4362485e-01};
+static float32_t m_biquad_coeffs_500_47_o4[5*2] = {9.4808078e-01, -1.5351176e+00, 9.4808078e-01, 1.5440156e+00, -9.4622338e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.6081027e+00, -9.4994372e-01};
+static float32_t m_biquad_coeffs_500_47_o6[5*3] = {9.2735755e-01, -1.5015630e+00, 9.2735755e-01, 1.5603334e+00, -9.2730778e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.5485861e+00, -9.6138775e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.6265789e+00, -9.6465474e-01};
+static float32_t m_biquad_coeffs_500_48_o4[5*2] = {9.6508098e-01, -1.5620271e+00, 9.6508098e-01, 1.5685816e+00, -9.6424139e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6110035e+00, -9.6592170e-01};
+static float32_t m_biquad_coeffs_500_48_o6[5*3] = {9.5097190e-01, -1.5391909e+00, 9.5097190e-01, 1.5788558e+00, -9.5095676e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5718505e+00, -9.7445124e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6235807e+00, -9.7592056e-01};
+static float32_t m_biquad_coeffs_500_48_o8[5*4] = {9.3642753e-01, -1.5156503e+00, 9.3642753e-01, 1.5701379e+00, -9.5402128e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5931994e+00, -9.5519781e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5747515e+00, -9.8035067e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6297992e+00, -9.8155707e-01};
 static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_iir_filter_enabled = 1;
+//low pass
+#define IIRLP_ORDER_MAX     12
+#define IIRLP_ORDER         8
+#define IIRLP_NUMSTAGES (IIRLP_ORDER/2)
+static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER_MAX];
+static float32_t m_lowpass_coeffs_o6[5*3] = {2.3161805e-03, 4.6323611e-03, 2.3161805e-03, 6.8339882e-01, -1.3033381e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.7352463e-01, -2.7940087e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0025213e+00, -6.5815877e-01};
+static float32_t m_lowpass_coeffs_o8[5*4] = {3.0956367e-04, 6.1912735e-04, 3.0956367e-04, 6.7885773e-01, -1.2282289e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.2742898e-01, -2.0315919e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.3824922e-01, -3.8645459e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0465667e+00, -7.3100932e-01};
+static float32_t m_lowpass_coeffs_o10[5*5] = {4.1302788e-05, 8.2605576e-05, 4.1302788e-05, 6.7676860e-01, -1.1936750e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.0725202e-01, -1.6978673e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.7352463e-01, -2.7940087e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.8806046e-01, -4.6884181e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0752206e+00, -7.7840262e-01};
+static float32_t m_lowpass_coeffs_o12[5*6] = {5.5059638e-06, 1.1011928e-05, 5.5059638e-06, 6.7563712e-01, -1.1749605e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 6.9658381e-01, -1.5214163e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.4096222e-01, -2.2554301e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.1433155e-01, -3.4689505e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.2671735e-01, -5.3277987e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0953200e+00, -8.1164669e-01};
+static arm_biquad_cascade_df2T_instance_f32 lowpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
+static uint8_t  spi_lowpass_filter_enabled = 1;
 
 //encoding
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1
@@ -254,6 +275,7 @@ void spi_ble_sent(uint8_t count);
 void spi_read_battery_status();
 void spi_send_battery_status();
 void spi_config_update(const uint8_t * value_p);
+void filter_init(uint8_t notch, uint8_t lowpass);
 void spi_init(void);
 
 
