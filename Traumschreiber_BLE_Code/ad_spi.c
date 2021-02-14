@@ -180,6 +180,7 @@ void spi_trigger_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t act
     uint8_t ad_id;
     if (pin == SPI_0_DRDY) {
         ad_id = 0;
+        //LED toggle forth
         nrf_gpio_pin_write(20, 0);
     } else if (pin == SPI_1_DRDY) {
         ad_id = 1;
@@ -223,6 +224,9 @@ void spi_data_conversion(uint8_t ad_id) {
     float32_t filtered_lp;
     float32_t filtered_iir;
 
+    if (debug_flag == 1 && ad_id != 0) return;
+
+    //LED toggle back
     if (ad_id == 0) nrf_gpio_pin_write(20, 1);
 
     for(int i = 0; i < SPI_READ_CHANNEL_NUMBER;i++) {
@@ -241,9 +245,21 @@ void spi_data_conversion(uint8_t ad_id) {
             filtered_iir = filtered_lp;
         }
         spi_channel_values[ad_id*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_iir;
+        if (debug_flag) {
+            spi_channel_values[1*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_lp;
+            spi_channel_values[2*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) value;
+            ad_converted[1] += 1;
+            ad_converted[2] += 1;
+        }
     }
     ad_recieved[ad_id] = false;
     ad_converted[ad_id] += 1;
+
+//    if (recieved_packets_counter % 250 == 0) {
+//        NRF_LOG_INFO("v: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(value));
+//        NRF_LOG_INFO("l: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_lp));
+//        NRF_LOG_INFO("n: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_iir));
+//    }
     
 //    //skipping events for downsampling
 //    if (triggerSkipCounter[ad_id] < triggerSkipCounterMax) {
@@ -531,8 +547,8 @@ void spi_read_battery_status() {
         
         int ad_id = 1;
         
-    NRF_LOG_INFO("SPI BS 0.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 0.");
+//    NRF_LOG_FLUSH();
         
         uint8_t tx_buf_len = 8;
         uint8_t bat_tx_buf[8] = {0};
@@ -545,24 +561,24 @@ void spi_read_battery_status() {
         bat_tx_buf[1] = tx_buf2[1];
         
 
-    NRF_LOG_INFO("SPI BS 1.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 1.");
+//    NRF_LOG_FLUSH();
         //writing in GLOBAL DIAGNOSTICS MUX REGISTER to set SAR to read out battery status
         uint8_t tx_buf_sar[] = ADREG_SAR_MUX; //len=2
         
         bat_tx_buf[2] = tx_buf_sar[0];
         bat_tx_buf[3] = tx_buf_sar[1];
 
-    NRF_LOG_INFO("SPI BS 2.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 2.");
+//    NRF_LOG_FLUSH();
        // read battery status
 
         bat_tx_buf[4] = m_tx_buf[0];
         bat_tx_buf[5] = m_tx_buf[1];
 
 
-    NRF_LOG_INFO("SPI BS 3.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 3.");
+//    NRF_LOG_FLUSH();
 
 //turn back to measurements reading!!!!
         
@@ -573,15 +589,15 @@ void spi_read_battery_status() {
         bat_tx_buf[7] = tx_buf2[1];
 
 
-    NRF_LOG_INFO("SPI BS 4.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 4.");
+//    NRF_LOG_FLUSH();
 
        memset(m_rx_buf[ad_id], 0, tx_buf_len);
        nrf_drv_spi_transfer(&spi[ad_id], m_tx_buf, tx_buf_len, m_rx_buf[ad_id], tx_buf_len);
        battery_read = true;
 
-    NRF_LOG_INFO("SPI BS 5.");
-    NRF_LOG_FLUSH();
+//    NRF_LOG_INFO("SPI BS 5.");
+//    NRF_LOG_FLUSH();
 }
 
 void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a warning otherwise
@@ -715,6 +731,10 @@ void filter_init(uint8_t notch, uint8_t lowpass)
     for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         arm_biquad_cascade_df2T_init_f32(&iir_instance[i], numstages, iir_coeffs, m_biquad_state[i]);
     }
+//    for(int i = 0; i < 10;i++) {
+//        NRF_LOG_INFO("fc: " NRF_LOG_FLOAT_MARKER " f", NRF_LOG_FLOAT(iir_coeffs[i]));
+//    }
+        
     //low pass filter
     float32_t* lp_coeffs;
     switch(lowpass){
@@ -741,6 +761,17 @@ void filter_init(uint8_t notch, uint8_t lowpass)
     for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         arm_biquad_cascade_df2T_init_f32(&lowpass_instance[i], numstages, lp_coeffs, m_lowpass_state[i]);
     }
+    
+//    NRF_LOG_INFO("lp filter: ns: %i", lowpass_instance[0].numStages);
+//    NRF_LOG_INFO("lp: " NRF_LOG_FLOAT_MARKER " f", NRF_LOG_FLOAT(lowpass_instance[0].pCoeffs[0]*10000));
+//    for(int i = 0; i < 10;i++) {
+//        NRF_LOG_INFO("lp: " NRF_LOG_FLOAT_MARKER " f", NRF_LOG_FLOAT(lp_coeffs[i]*10000));
+//    }
+//    nrf_gpio_pin_write(20, 0);
+    nrf_gpio_pin_write(18, 0);
+    nrf_delay_ms(500);
+    if (spi_iir_filter_enabled) nrf_gpio_pin_write(18, 1);
+//    nrf_gpio_pin_write(18, 1);
 }
 
 
