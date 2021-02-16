@@ -57,7 +57,7 @@
 
 #define TRAUM_SERVICE_VALUE_LENGTH  20
 #define CONF_CHAR_VALUE_LENGTH  4
-#define CODE_CHAR_VALUE_LENGTH  12
+#define CODE_CHAR_VALUE_LENGTH  14
 
 
 static const uint8_t traum_use_code_characteristic = 1;

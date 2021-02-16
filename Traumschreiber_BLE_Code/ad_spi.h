@@ -139,6 +139,7 @@ static uint16_t  recieved_packets_counter      = 0;
 static uint16_t  recieved_packets_counter_max  = 16;
 static uint16_t  send_packets_counter          = 0;
 static uint16_t  collected_packets_counter     = 0;
+static uint32_t  buffer_usage_counter          = 0;
 static const uint8_t debug_flag = 1;
 
 
@@ -162,7 +163,7 @@ static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTA
 static uint8_t  spi_iir_filter_enabled = 1;
 //low pass
 #define IIRLP_ORDER_MAX     12
-#define IIRLP_ORDER         8
+#define IIRLP_ORDER         6
 #define IIRLP_NUMSTAGES (IIRLP_ORDER/2)
 static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER_MAX];
 static float32_t m_lowpass_coeffs_o6[5*3] = {2.3161805e-03, 4.6323611e-03, 2.3161805e-03, 6.8339882e-01, -1.3033381e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.7352463e-01, -2.7940087e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0025213e+00, -6.5815877e-01};

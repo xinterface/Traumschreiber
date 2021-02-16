@@ -315,6 +315,8 @@ void spi_data_conversion(uint8_t ad_id) {
             //encode
             spi_encode_data();
 
+            buffer_usage_counter += stb_read_capacity;
+
             //NRF_LOG_INFO("S: %02x%02x%02x%02x = %i", m_rx_buf[0][0], m_rx_buf[0][1], m_rx_buf[0][2], m_rx_buf[0][3], spi_channel_values[0]);
             
             nrf_gpio_pin_write(18, 1);
@@ -327,7 +329,8 @@ void spi_data_conversion(uint8_t ad_id) {
         
         //if recieved_packets_counter is reached, update signal_scaling
         //it's out here to reset the ad_recieved more quickly
-        if (recieved_packets_counter >= 1000) {
+//        if (recieved_packets_counter >= 1000) {
+        if (recieved_packets_counter >= 167) {
             //do stuff
             spi_adapt_encoding();
             recieved_packets_counter = 0;
@@ -484,6 +487,11 @@ void spi_adapt_encoding(void)
 
 
     }
+    //packetSkipCounter
+    spi_code_send_buf[12] = packetSkipCounter > 255 ? 255 : packetSkipCounter;
+    buffer_usage_counter = buffer_usage_counter/(20*167);
+    spi_code_send_buf[13] = buffer_usage_counter > 255 ? 255 : buffer_usage_counter;
+    buffer_usage_counter = 0;
 
     //send packet
     if (traum_use_code_characteristic) {
@@ -637,7 +645,7 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
     //spi_enc_factor_safe_encoding = (value2 & 0xF0) >> 4;
     //spi_enc_factor_safe_encoding = spi_enc_factor_safe_encoding == 0 ? SPI_FACTOR_SAFE_ENCODING_DEFAULT : spi_enc_factor_safe_encoding;
     uint8_t notch_filter = (value2 & 0x70) >> 4;
-    uint8_t lp_filter = (value2 & 0x80) ? 10 : 8;
+    uint8_t lp_filter = (value2 & 0x80) ? 8 : 6;
     filter_init(notch_filter, lp_filter);
 
     NRF_LOG_INFO("SPI config updated.");
@@ -693,7 +701,7 @@ void filter_init(uint8_t notch, uint8_t lowpass)
     notch = notch > 7 ? 0 : notch;
     switch(notch){
         case 0: //default
-          iir_coeffs = m_biquad_coeffs_500_48_o4;
+          iir_coeffs = m_biquad_coeffs_500_48_o8;
           numstages = 2;
           break;
         case 1:
