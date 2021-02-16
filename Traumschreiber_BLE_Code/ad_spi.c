@@ -702,7 +702,7 @@ void filter_init(uint8_t notch, uint8_t lowpass)
     switch(notch){
         case 0: //default
           iir_coeffs = m_biquad_coeffs_500_48_o8;
-          numstages = 2;
+          numstages = 4;
           break;
         case 1:
           iir_coeffs = m_biquad_coeffs_500_45_o4;
@@ -729,8 +729,8 @@ void filter_init(uint8_t notch, uint8_t lowpass)
           numstages = 3;
           break;
         case 7:
-          iir_coeffs = m_biquad_coeffs_500_48_o8;
-          numstages = 4;
+          iir_coeffs = m_biquad_coeffs_500_46_o6;
+          numstages = 3;
           break;
         default:
           NRF_LOG_INFO("SPI init filter error!");
