@@ -140,7 +140,7 @@ static uint16_t  recieved_packets_counter_max  = 16;
 static uint16_t  send_packets_counter          = 0;
 static uint16_t  collected_packets_counter     = 0;
 static uint32_t  buffer_usage_counter          = 0;
-static const uint8_t debug_flag = 1;
+static const uint8_t debug_flag = 0;
 
 
 //filtering

@@ -235,12 +235,12 @@ void spi_data_conversion(uint8_t ad_id) {
         //it is bytes 1,2,3. pos 0 is header.
         value = (float32_t) ((m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+1] << 24 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+2] << 16 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+3] << 8) >> 8); //more elegant than the line above
         if (spi_lowpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&lowpass_instance[i], &value, &filtered_lp, 1);
+            arm_biquad_cascade_df2T_f32(&lowpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &value, &filtered_lp, 1);
         } else {
             filtered_lp = value;
         }
         if (spi_iir_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&iir_instance[i], &filtered_lp, &filtered_iir, 1);
+            arm_biquad_cascade_df2T_f32(&iir_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &filtered_lp, &filtered_iir, 1);
         } else {
             filtered_iir = filtered_lp;
         }
