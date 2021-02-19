@@ -12,13 +12,14 @@ works:
 	filtering
 		biquad cascade IIR filters from arm_math package for M4
 			two instances per channel
-				low pass and notch
+				high pass, low pass and notch
 				coefficients (and order) are configurable via config characteristic
 		turned on by default, circumvented if dummy data is transmitted
 	encoding
 		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
 			values are shifted (aka least significant Bits are dropped) according to current variance
-			amount of shifting is pushed out via 'C0DE' characteristic every 1000 data points as notification
+			amount of shifting is pushed out via 'C0DE' characteristic every second data points as notification
+				also includes, how many packages have been dropped since the last C0DE update
 	dummy data generation
 		can be toggeled via config characteristic (see below)
 		data gets generated every time a sample from the ADs come in
@@ -35,18 +36,20 @@ works:
 			ooox oooo: if set, replace half of the generated data by real data (only works together with the option above, obviously)
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
 			oooo oxoo: if set, data is only send via first characteristic
+			oooo ooxo: if set, enables high pass filter
+			oooo ooox: if set, enables average calculation/subtraction
 		2nd Byte:
 			//xxxx oooo: encoding factor (0 resets to default (8?)
 			xxxx oooo: switching between filter sets
-				0: default
+				0: FolterCoeff_Notch_fs500_L48_H52_O8 (default)
 				1: FolterCoeff_Notch_fs500_L45_H55_O4
 				2: FolterCoeff_Notch_fs500_L45_H55_O6
 				3: FolterCoeff_Notch_fs500_L47_H53_O4
 				4: FolterCoeff_Notch_fs500_L47_H53_O6
-				5: FolterCoeff_Notch_fs500_L48_H52_O4 (default)
+				5: FolterCoeff_Notch_fs500_L48_H52_O4
 				6: FolterCoeff_Notch_fs500_L48_H52_O6
-				7: FolterCoeff_Notch_fs500_L48_H52_O8
-				8-15: same as above but FolterCoeff_LowPass_fs500_L73.3333_O10 is used for low pass (0-7 use the default O8)
+				7: FolterCoeff_Notch_fs500_L46_H54_O6
+				8-15: same as 0-7 above but FolterCoeff_LowPass_fs500_L73.3333_O8 is used for low pass (0-7 use the default FolterCoeff_LowPass_fs500_L43.3333_O6)
 			reserved
 		3rd and 4th Byte: debug/controll data. for example battery status.
 		

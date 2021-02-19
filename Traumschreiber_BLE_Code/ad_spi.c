@@ -221,6 +221,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 void spi_data_conversion(uint8_t ad_id) {
 
     float32_t value;
+    float32_t filtered_hp;
     float32_t filtered_lp;
     float32_t filtered_iir;
 
@@ -234,10 +235,15 @@ void spi_data_conversion(uint8_t ad_id) {
         //val = (int32_t)(0x007FFFFF && (uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] + 0x000001FF * ((uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] && 0x00800000));
         //it is bytes 1,2,3. pos 0 is header.
         value = (float32_t) ((m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+1] << 24 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+2] << 16 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+3] << 8) >> 8); //more elegant than the line above
-        if (spi_lowpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&lowpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &value, &filtered_lp, 1);
+        if (spi_highpass_filter_enabled) {
+            arm_biquad_cascade_df2T_f32(&highpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &value, &filtered_hp, 1);
         } else {
-            filtered_lp = value;
+            filtered_hp = value;
+        }
+        if (spi_lowpass_filter_enabled) {
+            arm_biquad_cascade_df2T_f32(&lowpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &filtered_hp, &filtered_lp, 1);
+        } else {
+            filtered_lp = filtered_hp;
         }
         if (spi_iir_filter_enabled) {
             arm_biquad_cascade_df2T_f32(&iir_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &filtered_lp, &filtered_iir, 1);
@@ -362,34 +368,34 @@ void spi_send_battery_status() {
  * @brief Function to fetch the current pointer to the oldest spi data.
  * should probably be called spi_get_(send)_data
  */
-void spi_filter_data(void)
-{    
-    if (spi_iir_filter_enabled) {
-        float32_t value;
-        float32_t filtered;
-                
-        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-        
-            value = spi_channel_values[i] / ad_converted[i/SPI_READ_CHANNEL_NUMBER];
-            spi_channel_values[i] = 0;
-
-            arm_biquad_cascade_df2T_f32(&iir_instance[i], &value, &filtered, 1);
-
-            spi_filtered_values[i] = (int32_t) filtered;
-            //add check for min/max values?
-            //kinda happens during encoding i guess
-        }
-    } else {
-  
-        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-
-            spi_filtered_values[i] = (int32_t) spi_channel_values[i];
-            spi_channel_values[i] = 0;
-
-        }
-    }
-    
-}
+//void spi_filter_data(void)
+//{    
+//    if (spi_iir_filter_enabled) {
+//        float32_t value;
+//        float32_t filtered;
+//                
+//        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+//        
+//            value = spi_channel_values[i] / ad_converted[i/SPI_READ_CHANNEL_NUMBER];
+//            spi_channel_values[i] = 0;
+//
+//            arm_biquad_cascade_df2T_f32(&iir_instance[i], &value, &filtered, 1);
+//
+//            spi_filtered_values[i] = (int32_t) filtered;
+//            //add check for min/max values?
+//            //kinda happens during encoding i guess
+//        }
+//    } else {
+//  
+//        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+//
+//            spi_filtered_values[i] = (int32_t) spi_channel_values[i];
+//            spi_channel_values[i] = 0;
+//
+//        }
+//    }
+//    
+//}
 
 
 /**
@@ -412,8 +418,17 @@ void spi_encode_data(void)
     float32_t s_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
+        //average calculation (discarding outliers)
+        if (spi_running_average_enabled) {
+            if (c_value > 5*spi_estimated_variance[n_channel]) {
+                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
+            } else {
+                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
+            }
+            c_value = c_value - spi_estimated_average[n_channel];
+        }
         s_value = (float32_t)c_value*(float32_t)c_value;
-        //discarding outliers
+        //variance calculation (discarding outliers)
         if (s_value > 5*spi_estimated_variance[n_channel]) {
             spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_5;
         } else {
@@ -630,12 +645,18 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
         APP_ERROR_CHECK(err_code);
     }
 
-    spi_data_gen_enabled = (value & 0x20) >> 1;
+    spi_data_gen_enabled = (value & 0x20) >> 5;
     spi_data_gen_use_half = value & 0x10;
     //disable filtering with the dummy data
-    spi_iir_filter_enabled = spi_data_gen_enabled ? 0 : 1;
+    //spi_iir_filter_enabled = spi_data_gen_enabled ? 0 : 1; //not needed anymore, because insert happens after filtering
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
+    
+    spi_highpass_filter_enabled = (value & 0x02) >> 1;
+    //spi_highpass_filter_enabled = ((value & 0x02) >> 1) ? 0 : 1; //active low version
+    
+    spi_running_average_enabled = (value & 0x01) >> 0;
+    //spi_running_average_enabled = ((value & 0x01) >> 0) ? 0 : 1; //active low version
 
     ////workaround for slowdown measurements.
     //spi_ble_send_devision = (value2 & 0xF0) >> 4;
@@ -776,6 +797,14 @@ void filter_init(uint8_t notch, uint8_t lowpass)
 //        NRF_LOG_INFO("lp: " NRF_LOG_FLOAT_MARKER " f", NRF_LOG_FLOAT(lp_coeffs[i]*10000));
 //    }
 //    nrf_gpio_pin_write(20, 0);
+
+    //high pass filter
+    float32_t* hp_coeffs = m_highpass_coeffs_o6;
+    numstages = 3;
+    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+        arm_biquad_cascade_df2T_init_f32(&highpass_instance[i], numstages, hp_coeffs, m_highpass_state[i]);
+    }
+
     nrf_gpio_pin_write(18, 0);
     nrf_delay_ms(500);
     if (spi_iir_filter_enabled) nrf_gpio_pin_write(18, 1);

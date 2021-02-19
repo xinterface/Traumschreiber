@@ -174,6 +174,14 @@ static float32_t m_lowpass_coeffs_o10[5*5] = {4.1302788e-05, 8.2605576e-05, 4.13
 static float32_t m_lowpass_coeffs_o12[5*6] = {5.5059638e-06, 1.1011928e-05, 5.5059638e-06, 6.7563712e-01, -1.1749605e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 6.9658381e-01, -1.5214163e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.4096222e-01, -2.2554301e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.1433155e-01, -3.4689505e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.2671735e-01, -5.3277987e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0953200e+00, -8.1164669e-01};
 static arm_biquad_cascade_df2T_instance_f32 lowpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_lowpass_filter_enabled = 1;
+//high pass
+#define IIRHP_ORDER         6
+#define IIRHP_NUMSTAGES (IIRHP_ORDER/2)
+static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
+static float32_t m_highpass_coeffs_o6[5*3] = {9.7601574e-01, -1.9520315e+00, 9.7601574e-01, 1.9758594e+00, -9.7601540e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9822289e+00, -9.8238545e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9933590e+00, -9.9351643e-01};
+static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
+static uint8_t  spi_highpass_filter_enabled = 0;
+static uint8_t  spi_running_average_enabled = 0;
 
 //encoding
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1
@@ -181,6 +189,7 @@ static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
+static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x0};
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
@@ -262,7 +271,7 @@ static void gpio_init(void);
 void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
                        void *                    p_context);
 void spi_data_conversion(uint8_t ad_id);
-void spi_filter_data(void);
+//void spi_filter_data(void);
 void spi_encode_data(void);
 void spi_adapt_encoding(void);
 
