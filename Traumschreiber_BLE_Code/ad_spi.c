@@ -220,6 +220,7 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 //- adapts encoding, if 1000 pkg are reached
 void spi_data_conversion(uint8_t ad_id) {
 
+    uint8_t   n_channel;
     float32_t value;
     float32_t filtered_hp;
     float32_t filtered_lp;
@@ -231,30 +232,32 @@ void spi_data_conversion(uint8_t ad_id) {
     if (ad_id == 0) nrf_gpio_pin_write(20, 1);
 
     for(int i = 0; i < SPI_READ_CHANNEL_NUMBER;i++) {
+        n_channel = ad_id*SPI_READ_CHANNEL_NUMBER+i;
+
         //convert 24Bit SPI value to 32Bit
         //val = (int32_t)(0x007FFFFF && (uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] + 0x000001FF * ((uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] && 0x00800000));
         //it is bytes 1,2,3. pos 0 is header.
         value = (float32_t) ((m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+1] << 24 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+2] << 16 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+3] << 8) >> 8); //more elegant than the line above
         if (spi_highpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&highpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &value, &filtered_hp, 1);
+            arm_biquad_cascade_df2T_f32(&highpass_instance[n_channel], &value, &filtered_hp, 1);
         } else if (spi_fo_hp_filter_enabled) {
-            fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i] = fo_hp_alpha * (fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i] + value - fo_hp_last_x[ad_id*SPI_READ_CHANNEL_NUMBER+i]);
-            fo_hp_last_x[ad_id*SPI_READ_CHANNEL_NUMBER+i] = value;
-            filtered_hp = fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i];
+            fo_hp_last_y[n_channel] = fo_hp_alpha * (fo_hp_last_y[n_channel] + value - fo_hp_last_x[n_channel]);
+            fo_hp_last_x[n_channel] = value;
+            filtered_hp = fo_hp_last_y[n_channel];
         } else {
             filtered_hp = value;
         }
         if (spi_lowpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&lowpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &filtered_hp, &filtered_lp, 1);
+            arm_biquad_cascade_df2T_f32(&lowpass_instance[n_channel], &filtered_hp, &filtered_lp, 1);
         } else {
             filtered_lp = filtered_hp;
         }
         if (spi_iir_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&iir_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &filtered_lp, &filtered_iir, 1);
+            arm_biquad_cascade_df2T_f32(&iir_instance[n_channel], &filtered_lp, &filtered_iir, 1);
         } else {
             filtered_iir = filtered_lp;
         }
-        spi_channel_values[ad_id*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_iir;
+        spi_channel_values[n_channel] += (int32_t) filtered_iir;
         if (debug_flag) {
             spi_channel_values[1*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_lp;
             spi_channel_values[2*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) value;
@@ -423,12 +426,14 @@ void spi_encode_data(void)
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
         //average calculation (discarding outliers)
-        if (c_value > 5*spi_estimated_average[n_channel]) {
-            spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
-        } else {
-            spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
+        if (spi_running_average_enabled) {
+            if (c_value > 5*spi_estimated_average[n_channel]) {
+                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
+            } else {
+                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
+            }
+            c_value = c_value - spi_estimated_average[n_channel];
         }
-        c_value = c_value - spi_estimated_average[n_channel];
         s_value = (float32_t)c_value*(float32_t)c_value;
         //variance calculation (discarding outliers)
         if (s_value > 5*spi_estimated_variance[n_channel]) {

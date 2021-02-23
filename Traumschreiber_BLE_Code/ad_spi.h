@@ -188,6 +188,8 @@ static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static uint8_t  spi_highpass_filter_enabled = 0;
 static uint8_t  spi_fo_hp_filter_enabled = 0;
+static uint8_t  spi_running_average_enabled = 0;
+
 
 //encoding
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1
