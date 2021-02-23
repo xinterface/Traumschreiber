@@ -420,7 +420,7 @@ void spi_encode_data(void)
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
         //average calculation (discarding outliers)
         if (spi_running_average_enabled) {
-            if (c_value > 5*spi_estimated_variance[n_channel]) {
+            if (c_value > 5*spi_estimated_average[n_channel]) {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
             } else {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
