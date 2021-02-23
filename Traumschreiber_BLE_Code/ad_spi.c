@@ -237,6 +237,10 @@ void spi_data_conversion(uint8_t ad_id) {
         value = (float32_t) ((m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+1] << 24 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+2] << 16 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+3] << 8) >> 8); //more elegant than the line above
         if (spi_highpass_filter_enabled) {
             arm_biquad_cascade_df2T_f32(&highpass_instance[ad_id*SPI_READ_CHANNEL_NUMBER+i], &value, &filtered_hp, 1);
+        } else if (spi_fo_hp_filter_enabled) {
+            fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i] = fo_hp_alpha * (fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i] + value - fo_hp_last_x[ad_id*SPI_READ_CHANNEL_NUMBER+i]);
+            fo_hp_last_x[ad_id*SPI_READ_CHANNEL_NUMBER+i] = value;
+            filtered_hp = fo_hp_last_y[ad_id*SPI_READ_CHANNEL_NUMBER+i];
         } else {
             filtered_hp = value;
         }
@@ -419,14 +423,12 @@ void spi_encode_data(void)
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
         //average calculation (discarding outliers)
-        if (spi_running_average_enabled) {
-            if (c_value > 5*spi_estimated_average[n_channel]) {
-                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
-            } else {
-                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
-            }
-            c_value = c_value - spi_estimated_average[n_channel];
+        if (c_value > 5*spi_estimated_average[n_channel]) {
+            spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
+        } else {
+            spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
         }
+        c_value = c_value - spi_estimated_average[n_channel];
         s_value = (float32_t)c_value*(float32_t)c_value;
         //variance calculation (discarding outliers)
         if (s_value > 5*spi_estimated_variance[n_channel]) {
@@ -652,11 +654,13 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     traum_use_only_one_characteristic = (value & 0x04) >> 2;
     
+    //switching filters
     spi_highpass_filter_enabled = (value & 0x02) >> 1;
     //spi_highpass_filter_enabled = ((value & 0x02) >> 1) ? 0 : 1; //active low version
-    
-    spi_running_average_enabled = (value & 0x01) >> 0;
-    //spi_running_average_enabled = ((value & 0x01) >> 0) ? 0 : 1; //active low version
+
+    spi_fo_hp_filter_enabled = (value & 0x01) >> 0;
+    //spi_fo_hp_filter_enabled = ((value & 0x01) >> 0) ? 0 : 1; //active low version
+
 
     ////workaround for slowdown measurements.
     //spi_ble_send_devision = (value2 & 0xF0) >> 4;

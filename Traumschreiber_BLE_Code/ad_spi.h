@@ -180,8 +180,14 @@ static uint8_t  spi_lowpass_filter_enabled = 1;
 static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
 static float32_t m_highpass_coeffs_o6[5*3] = {9.7601574e-01, -1.9520315e+00, 9.7601574e-01, 1.9758594e+00, -9.7601540e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9822289e+00, -9.8238545e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9933590e+00, -9.9351643e-01};
 static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
+//first order high pass
+#define FO_HP_RC         1
+#define FO_HP_DT         1
+static const float32_t fo_hp_alpha = FO_HP_RC / (FO_HP_RC + FO_HP_DT);
+static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
+static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static uint8_t  spi_highpass_filter_enabled = 0;
-static uint8_t  spi_running_average_enabled = 0;
+static uint8_t  spi_fo_hp_filter_enabled = 0;
 
 //encoding
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1

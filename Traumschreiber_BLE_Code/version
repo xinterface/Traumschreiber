@@ -36,8 +36,8 @@ works:
 			ooox oooo: if set, replace half of the generated data by real data (only works together with the option above, obviously)
 			oooo xooo: if set, battery status is aquired and written in the following two Bytes. currently dummy data (0x102) is written, because there is a bug still. this bit is then unset by Traumschreiber.
 			oooo oxoo: if set, data is only send via first characteristic
-			oooo ooxo: if set, enables high pass filter
-			oooo ooox: if set, enables average calculation/subtraction
+			oooo ooxo: if set, enables iir high pass filter (if both are set, this one has priority over the following one)
+			oooo ooox: if set, enables first order high pass filter
 		2nd Byte:
 			//xxxx oooo: encoding factor (0 resets to default (8?)
 			xxxx oooo: switching between filter sets
