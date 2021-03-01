@@ -144,46 +144,38 @@ static const uint8_t debug_flag = 0;
 
 
 //filtering
-//notch
-#define IIR_ORDER     8
-#define IIR_NUMSTAGES (IIR_ORDER/2)
+//notch (50Hz)
+#define IIR_ORDER     6
 static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
-//static float32_t m_biquad_coeffs[5*IIR_NUMSTAGES] = {0.9314, -0.5764, 0.9314, 0.5313, -0.9306, 1.0000, -0.6188, 1.0000, 0.6624, -0.9321};
-//static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.9007, 0.4943, 0.9007, -0.4241, -0.8993, 1.0000, 0.5488, 1.0000, -0.6163, -0.9022};
-//static float32_t m_biquad_coeffs_167[5*IIR_NUMSTAGES] = {0.8988, 0.5571, 0.8988, -0.4899, -0.8972, 1.0000, 0.6198, 1.0000, -0.6838, -0.9005};
-//static float32_t m_biquad_coeffs_500[5*IIR_NUMSTAGES] = {0.9314, -1.5089, 0.9314, 1.5196, -0.9281, 1.0000, -1.6201, 1.0000, 1.6056, -0.9346};
-static float32_t m_biquad_coeffs_500_45_o4[5*2] = {9.1496915e-01, -1.4833783e+00, 9.1496915e-01, 1.4952379e+00, -9.0997660e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.6035019e+00, -9.2000347e-01};
-static float32_t m_biquad_coeffs_500_45_o6[5*3] = {8.8183820e-01, -1.4296653e+00, 8.8183820e-01, 1.5252712e+00, -8.8161862e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.5017873e+00, -9.3475473e-01, 1.0000000e+00, -1.6212331e+00, 1.0000000e+00, 1.6330429e+00, -9.4362485e-01};
-static float32_t m_biquad_coeffs_500_47_o4[5*2] = {9.4808078e-01, -1.5351176e+00, 9.4808078e-01, 1.5440156e+00, -9.4622338e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.6081027e+00, -9.4994372e-01};
-static float32_t m_biquad_coeffs_500_47_o6[5*3] = {9.2735755e-01, -1.5015630e+00, 9.2735755e-01, 1.5603334e+00, -9.2730778e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.5485861e+00, -9.6138775e-01, 1.0000000e+00, -1.6191845e+00, 1.0000000e+00, 1.6265789e+00, -9.6465474e-01};
-static float32_t m_biquad_coeffs_500_48_o4[5*2] = {9.6508098e-01, -1.5620271e+00, 9.6508098e-01, 1.5685816e+00, -9.6424139e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6110035e+00, -9.6592170e-01};
-static float32_t m_biquad_coeffs_500_48_o6[5*3] = {9.5097190e-01, -1.5391909e+00, 9.5097190e-01, 1.5788558e+00, -9.5095676e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5718505e+00, -9.7445124e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6235807e+00, -9.7592056e-01};
-static float32_t m_biquad_coeffs_500_48_o8[5*4] = {9.3642753e-01, -1.5156503e+00, 9.3642753e-01, 1.5701379e+00, -9.5402128e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5931994e+00, -9.5519781e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5747515e+00, -9.8035067e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6297992e+00, -9.8155707e-01};
-static float32_t m_biquad_coeffs_500_46_o6[5*4] = {9.0431875e-01, -1.4650689e+00, 9.0431875e-01, 1.5424813e+00, -9.0420359e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.5252273e+00, -9.4815099e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6297319e+00, -9.5389223e-01};
+static float32_t m_biquad_coeffs_48_o4[5*2] = {9.6508098e-01, -1.5620271e+00, 9.6508098e-01, 1.5685816e+00, -9.6424139e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6110035e+00, -9.6592170e-01};
+static float32_t m_biquad_coeffs_48_o6[5*3] = {9.5097190e-01, -1.5391909e+00, 9.5097190e-01, 1.5788558e+00, -9.5095676e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5718505e+00, -9.7445124e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6235807e+00, -9.7592056e-01};
+static float32_t m_biquad_coeffs_46_o4[5*2] = {9.3137884e-01, -1.5089085e+00, 9.3137884e-01, 1.5195662e+00, -9.2813122e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6056036e+00, -9.3464386e-01};
+static float32_t m_biquad_coeffs_46_o6[5*3] = {9.0431875e-01, -1.4650689e+00, 9.0431875e-01, 1.5424813e+00, -9.0420359e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.5252273e+00, -9.4815099e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6297319e+00, -9.5389223e-01};
 static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_iir_filter_enabled = 1;
 //low pass
-#define IIRLP_ORDER_MAX     12
 #define IIRLP_ORDER         6
-#define IIRLP_NUMSTAGES (IIRLP_ORDER/2)
-static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER_MAX];
-//static float32_t m_lowpass_coeffs_o6[5*3] = {2.3161805e-03, 4.6323611e-03, 2.3161805e-03, 6.8339882e-01, -1.3033381e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.7352463e-01, -2.7940087e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0025213e+00, -6.5815877e-01};
-static float32_t m_lowpass_coeffs_o6[5*3] = {1.6268548e-04, 3.2537096e-04, 1.6268548e-04, 1.1402001e+00, -3.3299949e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.2520881e+00, -4.6380692e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.5084788e+00, -7.6355140e-01};
-static float32_t m_lowpass_coeffs_o8[5*4] = {3.0956367e-04, 6.1912735e-04, 3.0956367e-04, 6.7885773e-01, -1.2282289e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.2742898e-01, -2.0315919e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.3824922e-01, -3.8645459e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0465667e+00, -7.3100932e-01};
-static float32_t m_lowpass_coeffs_o10[5*5] = {4.1302788e-05, 8.2605576e-05, 4.1302788e-05, 6.7676860e-01, -1.1936750e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.0725202e-01, -1.6978673e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.7352463e-01, -2.7940087e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.8806046e-01, -4.6884181e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0752206e+00, -7.7840262e-01};
-static float32_t m_lowpass_coeffs_o12[5*6] = {5.5059638e-06, 1.1011928e-05, 5.5059638e-06, 6.7563712e-01, -1.1749605e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 6.9658381e-01, -1.5214163e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 7.4096222e-01, -2.2554301e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 8.1433155e-01, -3.4689505e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.2671735e-01, -5.3277987e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.0953200e+00, -8.1164669e-01};
+static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER];
+static float32_t m_lowpass_coeffs_o4[5*2] = {3.3628151e-03, 6.7256303e-03, 3.3628151e-03, 1.1295059e+00, -3.3775738e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.4013136e+00, -6.5967937e-01};
+static float32_t m_lowpass_coeffs_o6[5*3] = {8.5753645e-04, 1.7150729e-03, 8.5753645e-04, 8.7762954e-01, -2.0393320e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.8240579e-01, -3.4766539e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.2385063e+00, -6.9898443e-01};
 static arm_biquad_cascade_df2T_instance_f32 lowpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
 static uint8_t  spi_lowpass_filter_enabled = 1;
 //high pass
-#define IIRHP_ORDER         6
-#define IIRHP_NUMSTAGES (IIRHP_ORDER/2)
+#define IIRHP_ORDER         4
 static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
-static float32_t m_highpass_coeffs_o6[5*3] = {9.7601574e-01, -1.9520315e+00, 9.7601574e-01, 1.9758594e+00, -9.7601540e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9822289e+00, -9.8238545e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9933590e+00, -9.9351643e-01};
+static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01};
+static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.7247345e-01, -1.9449469e+00, 9.7247345e-01, 1.9608460e+00, -9.6129352e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9833308e+00, -9.8378341e-01};
+static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.9291659e-01, -1.9858332e+00, 9.9291659e-01, 1.9857830e+00, -9.8588336e-01};
+static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.8500771e-01, -1.9700154e+00, 9.8500771e-01, 1.9697906e+00, -9.7024021e-01};
 static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
 //first order high pass
 #define FO_HP_RC         1
-#define FO_HP_DT         1
-static const float32_t fo_hp_alpha = FO_HP_RC / (FO_HP_RC + FO_HP_DT);
+#define FO_HP_RC_0_5     0.3183099
+#define FO_HP_RC_1_3     0.1224269
+#define FO_HP_DT         0.002
+static float32_t fo_hp_alpha = FO_HP_RC / (FO_HP_RC + FO_HP_DT);
+static const float32_t fo_hp_alpha_0_5 = FO_HP_RC_0_5 / (FO_HP_RC_0_5 + FO_HP_DT);
+static const float32_t fo_hp_alpha_1_3 = FO_HP_RC_1_3 / (FO_HP_RC_1_3 + FO_HP_DT);
 static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static uint8_t  spi_highpass_filter_enabled = 0;
@@ -201,6 +193,8 @@ static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x0};
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
+static uint8_t  spi_encode_min_shift = 0x0;
+static uint8_t  spi_encode_max_shift = 0xF;
 static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x00}; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
 #define SPI_FACTOR_SAFE_ENCODING_DEFAULT   8
 static uint8_t spi_enc_factor_safe_encoding = SPI_FACTOR_SAFE_ENCODING_DEFAULT;
@@ -230,10 +224,11 @@ static uint16_t        stb_read_capacity_safety  = 20*TRAUM_SERVICE_VALUE_LENGTH
 
 //static uint16_t traumschreiber_battery_status = 0;
 union data_union {
-    uint8_t send_data[4];
-    struct{uint8_t byte_0; uint8_t byte_1; uint16_t battery_status;} reg;
+    uint8_t send_data[CONF_CHAR_VALUE_LENGTH];
+    struct{uint8_t byte_0_3[4]; uint8_t byte_4; uint8_t byte_5; uint16_t battery_status;} reg;
 } static spi_config_register;
 extern bool battery_read;
+static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x00, 0x00, 0x01, 0x11, 0x0F, 0x00, 0x00, 0x00};
 
 
 //Debug Data Generation
@@ -296,7 +291,7 @@ void spi_ble_sent(uint8_t count);
 void spi_read_battery_status();
 void spi_send_battery_status();
 void spi_config_update(const uint8_t * value_p);
-void filter_init(uint8_t notch, uint8_t lowpass);
+void filter_init(uint8_t highpass, uint8_t lowpass, uint8_t notch);
 void spi_init(void);
 
 

@@ -109,7 +109,8 @@ void spi_ble_connect(ble_traum_t * p_traum_service)
     NRF_LOG_FLUSH();
 
     //initialize config register and read battery
-    memset(&spi_config_register.send_data, 0, 4);
+//    memset(&spi_config_register.send_data, 0, 4);
+    memcpy(&spi_config_register.send_data, &spi_config_register_default, 8);
     spi_read_battery_status();
 
 }
@@ -270,6 +271,7 @@ void spi_data_conversion(uint8_t ad_id) {
 
 //    if (recieved_packets_counter % 250 == 0) {
 //        NRF_LOG_INFO("v: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(value));
+//        NRF_LOG_INFO("h: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_hp));
 //        NRF_LOG_INFO("l: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_lp));
 //        NRF_LOG_INFO("n: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_iir));
 //    }
@@ -317,12 +319,7 @@ void spi_data_conversion(uint8_t ad_id) {
                 //NRF_LOG_INFO("gen: %i/%i+%i\tc: %i\t%i-%i", spi_data_gen_buf[0], spi_data_gen_buf[1], spi_data_gen_buf[2], spi_data_gen_buf[3], spi_data_gen_buf[4], spi_data_gen_buf[5]);
 
                 //copy new data to spi_read_buffer from generation buffer
-                //it seems that there is a little/big endian mixup here (ad is other order than ble chip), but since for counters that does not matter for values <256, this is ignored
-                if (spi_data_gen_use_half) {
-                    memcpy(&spi_filtered_values, &spi_data_gen_buf, 12);
-                } else {
-                    memcpy(&spi_filtered_values, &spi_data_gen_buf, 32);
-                }
+                memcpy(&spi_filtered_values, &spi_data_gen_buf, 32);
             }
 
             //encode
@@ -344,7 +341,6 @@ void spi_data_conversion(uint8_t ad_id) {
         //it's out here to reset the ad_recieved more quickly
 //        if (recieved_packets_counter >= 1000) {
         if (recieved_packets_counter >= 167) {
-            //do stuff
             spi_adapt_encoding();
             recieved_packets_counter = 0;
         }
@@ -369,40 +365,6 @@ void spi_send_battery_status() {
 
         battery_read = false;
 }
-
-
-/**
- * @brief Function to fetch the current pointer to the oldest spi data.
- * should probably be called spi_get_(send)_data
- */
-//void spi_filter_data(void)
-//{    
-//    if (spi_iir_filter_enabled) {
-//        float32_t value;
-//        float32_t filtered;
-//                
-//        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-//        
-//            value = spi_channel_values[i] / ad_converted[i/SPI_READ_CHANNEL_NUMBER];
-//            spi_channel_values[i] = 0;
-//
-//            arm_biquad_cascade_df2T_f32(&iir_instance[i], &value, &filtered, 1);
-//
-//            spi_filtered_values[i] = (int32_t) filtered;
-//            //add check for min/max values?
-//            //kinda happens during encoding i guess
-//        }
-//    } else {
-//  
-//        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-//
-//            spi_filtered_values[i] = (int32_t) spi_channel_values[i];
-//            spi_channel_values[i] = 0;
-//
-//        }
-//    }
-//    
-//}
 
 
 /**
@@ -432,7 +394,7 @@ void spi_encode_data(void)
             } else {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
             }
-            c_value = c_value - spi_estimated_average[n_channel];
+            c_value = c_value - (int32_t)spi_estimated_average[n_channel];
         }
         s_value = (float32_t)c_value*(float32_t)c_value;
         //variance calculation (discarding outliers)
@@ -495,7 +457,8 @@ void spi_adapt_encoding(void)
         required_bitrange = sqrtf(spi_estimated_variance[n_channel]);
         required_bitrange = log2f(required_bitrange*spi_enc_factor_safe_encoding);
         spi_encode_shift[n_channel] = (uint32_t) ceilf(required_bitrange - traum_bits_per_channel);
-        //check valid range???? ##
+        spi_encode_shift[n_channel] = spi_encode_shift[n_channel] > spi_encode_max_shift ? spi_encode_max_shift : spi_encode_shift[n_channel];
+        spi_encode_shift[n_channel] = spi_encode_shift[n_channel] < spi_encode_min_shift ? spi_encode_min_shift : spi_encode_shift[n_channel];
         
         //NRF_LOG_INFO("%i, ev: %i\t,rb: %i\tes: %i", n_channel, spi_estimated_variance[n_channel], required_bitrange, spi_encode_shift[n_channel]);
         
@@ -632,58 +595,55 @@ void spi_read_battery_status() {
 
 void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a warning otherwise
 {
-    uint8_t value = value_p[0];
-    uint8_t value2 = value_p[1];
-    
-    //memset(&data.send_data, 0, 4);
-    //NRF_LOG_INFO("config update");
-    //NRF_LOG_FLUSH();
+//    uint8_t value = value_p[0];
+//    uint8_t value2 = value_p[1];
 
     //writing gain level to channel registers
-    uint8_t cc = ADREG_CHANNEL_CONFIG_GAIN_MASK & (value << 0);
+    uint8_t cc = ADREG_CHANNEL_CONFIG_GAIN_MASK & (value_p[0] << 0);
     uint8_t tx_buf[] = {0x00, cc, 0x01, cc, 0x02, cc, 0x03, cc, 0x04, cc, 0x05, cc, 0x06, cc, 0x07, cc}; //len 16
     uint8_t tx_buf_len = 16;
 
     for(int i=0;i<AD_NUMBER;i++) { 
         uint32_t err_code = nrf_drv_spi_transfer(&spi[i], tx_buf, tx_buf_len, m_rx_buf[i], tx_buf_len);
         
-        NRF_LOG_INFO("spi conf 02.%i: %04x", i, err_code);
-        NRF_LOG_FLUSH();
+//        NRF_LOG_INFO("spi conf 02.%i: %04x", i, err_code);
+//        NRF_LOG_FLUSH();
         APP_ERROR_CHECK(err_code);
     }
 
-    spi_data_gen_enabled = (value & 0x20) >> 5;
-    spi_data_gen_use_half = value & 0x10;
-    //disable filtering with the dummy data
-    //spi_iir_filter_enabled = spi_data_gen_enabled ? 0 : 1; //not needed anymore, because insert happens after filtering
-
-    traum_use_only_one_characteristic = (value & 0x04) >> 2;
+    //running average
+    spi_running_average_enabled = (value_p[0] & 0x08) >> 3;
     
-    //switching filters
-    spi_highpass_filter_enabled = (value & 0x02) >> 1;
-    //spi_highpass_filter_enabled = ((value & 0x02) >> 1) ? 0 : 1; //active low version
+    //send everything on first characteristic
+    traum_use_only_one_characteristic = (value_p[0] & 0x04) >> 2;
 
-    spi_fo_hp_filter_enabled = (value & 0x01) >> 0;
-    //spi_fo_hp_filter_enabled = ((value & 0x01) >> 0) ? 0 : 1; //active low version
+    //data generation
+    spi_data_gen_enabled = (value_p[0] & 0x02) >> 1;
+    
+
+    //filter switching
+    uint8_t hp_filter = (value_p[2] & 0x0F) >> 0;
+    uint8_t lp_filter = (value_p[3] & 0xF0) >> 4;
+    uint8_t notch_filter = (value_p[3] & 0x0F) >> 0;
+    filter_init(hp_filter, lp_filter, notch_filter);
+    
+    //for the other filters, this happens in the init function
+    spi_fo_hp_filter_enabled = (value_p[2] & 0xF0) >> 4;
+    fo_hp_alpha = (value_p[2] & 0x10) ? fo_hp_alpha_0_5 : fo_hp_alpha_1_3;
 
 
-    ////workaround for slowdown measurements.
-    //spi_ble_send_devision = (value2 & 0xF0) >> 4;
-    //triggerSkipCounterMax = 2 + spi_ble_send_devision;
+    //min/max bitshift
+    spi_encode_min_shift = (value_p[4] & 0xF0) >> 4;
+    spi_encode_max_shift = (value_p[4] & 0x0F) >> 0;
 
-    //update factor safe encoding
-    //spi_enc_factor_safe_encoding = (value2 & 0xF0) >> 4;
-    //spi_enc_factor_safe_encoding = spi_enc_factor_safe_encoding == 0 ? SPI_FACTOR_SAFE_ENCODING_DEFAULT : spi_enc_factor_safe_encoding;
-    uint8_t notch_filter = (value2 & 0x70) >> 4;
-    uint8_t lp_filter = (value2 & 0x80) ? 8 : 6;
-    filter_init(notch_filter, lp_filter);
 
     NRF_LOG_INFO("SPI config updated.");
     NRF_LOG_FLUSH();     
 
     //write new config into config register
-    spi_config_register.reg.byte_0 = value;
-    spi_config_register.reg.byte_1 = value2;
+    for (int i = 0; i < 6; i++) {
+        spi_config_register.send_data[i] = value_p[i];
+    }
 
 }
 
@@ -722,52 +682,51 @@ static void gpio_init(void)
 
 /**
  */
-void filter_init(uint8_t notch, uint8_t lowpass)
+void filter_init(uint8_t highpass, uint8_t lowpass, uint8_t notch)
 {
+    
+
+    //switching filters
+    spi_highpass_filter_enabled = 1;
+    spi_lowpass_filter_enabled = 1;
+    spi_iir_filter_enabled = 1;
+
+
     //todo# do we need to realloc the filter states??? currently they are just defined as max size
     uint8_t numstages;
+
     //notch filter
     float32_t* iir_coeffs;
-    notch = notch > 7 ? 0 : notch;
+    notch = notch > 4 ? 0 : notch;
     switch(notch){
-        case 0: //default
-          iir_coeffs = m_biquad_coeffs_500_48_o8;
-          numstages = 4;
+        case 0:
+          spi_iir_filter_enabled = 0;
           break;
         case 1:
-          iir_coeffs = m_biquad_coeffs_500_45_o4;
+          iir_coeffs = m_biquad_coeffs_48_o4;
           numstages = 2;
           break;
         case 2:
-          iir_coeffs = m_biquad_coeffs_500_45_o6;
+          iir_coeffs = m_biquad_coeffs_48_o6;
           numstages = 3;
           break;
         case 3:
-          iir_coeffs = m_biquad_coeffs_500_47_o4;
+          iir_coeffs = m_biquad_coeffs_46_o4;
           numstages = 2;
           break;
         case 4:
-          iir_coeffs = m_biquad_coeffs_500_47_o6;
-          numstages = 3;
-          break;
-        case 5:
-          iir_coeffs = m_biquad_coeffs_500_48_o4;
-          numstages = 2;
-          break;
-        case 6:
-          iir_coeffs = m_biquad_coeffs_500_48_o6;
-          numstages = 3;
-          break;
-        case 7:
-          iir_coeffs = m_biquad_coeffs_500_46_o6;
+          iir_coeffs = m_biquad_coeffs_46_o6;
           numstages = 3;
           break;
         default:
+          spi_iir_filter_enabled = 0;
           NRF_LOG_INFO("SPI init filter error!");
           break;
     }
-    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-        arm_biquad_cascade_df2T_init_f32(&iir_instance[i], numstages, iir_coeffs, m_biquad_state[i]);
+    if (spi_iir_filter_enabled) {
+        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+            arm_biquad_cascade_df2T_init_f32(&iir_instance[i], numstages, iir_coeffs, m_biquad_state[i]);
+        }
     }
 //    for(int i = 0; i < 10;i++) {
 //        NRF_LOG_INFO("fc: " NRF_LOG_FLOAT_MARKER " f", NRF_LOG_FLOAT(iir_coeffs[i]));
@@ -775,29 +734,28 @@ void filter_init(uint8_t notch, uint8_t lowpass)
         
     //low pass filter
     float32_t* lp_coeffs;
+    lowpass = lowpass > 2 ? 0 : lowpass;
     switch(lowpass){
-        case 6:
+        case 0:
+          spi_lowpass_filter_enabled = 0;
+          break;
+        case 1:
+          lp_coeffs = m_lowpass_coeffs_o4;
+          numstages = 2;
+          break;
+        case 2:
           lp_coeffs = m_lowpass_coeffs_o6;
           numstages = 3;
           break;
-        case 8:
-          lp_coeffs = m_lowpass_coeffs_o8;
-          numstages = 4;
-          break;
-        case 10:
-          lp_coeffs = m_lowpass_coeffs_o10;
-          numstages = 5;
-          break;
-        case 12:
-          lp_coeffs = m_lowpass_coeffs_o12;
-          numstages = 6;
-          break;
         default:
+          spi_lowpass_filter_enabled = 0;
           NRF_LOG_INFO("SPI init filter error!");
           break;
     }
-    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-        arm_biquad_cascade_df2T_init_f32(&lowpass_instance[i], numstages, lp_coeffs, m_lowpass_state[i]);
+    if (spi_lowpass_filter_enabled) {
+        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+            arm_biquad_cascade_df2T_init_f32(&lowpass_instance[i], numstages, lp_coeffs, m_lowpass_state[i]);
+        }
     }
     
 //    NRF_LOG_INFO("lp filter: ns: %i", lowpass_instance[0].numStages);
@@ -808,10 +766,39 @@ void filter_init(uint8_t notch, uint8_t lowpass)
 //    nrf_gpio_pin_write(20, 0);
 
     //high pass filter
-    float32_t* hp_coeffs = m_highpass_coeffs_o6;
-    numstages = 3;
-    for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
-        arm_biquad_cascade_df2T_init_f32(&highpass_instance[i], numstages, hp_coeffs, m_highpass_state[i]);
+        
+    //low pass filter
+    float32_t* hp_coeffs;
+    highpass = highpass > 4 ? 0 : highpass;
+    switch(highpass){
+        case 0:
+          spi_highpass_filter_enabled = 0;
+          break;
+        case 1:
+          hp_coeffs = m_highpass_coeffs_1_0_o4;
+          numstages = 2;
+          break;
+        case 2:
+          hp_coeffs = m_highpass_coeffs_1_7_o4;
+          numstages = 2;
+          break;
+        case 3:
+          hp_coeffs = m_highpass_coeffs_0_8_o2;
+          numstages = 1;
+          break;
+        case 4:
+          hp_coeffs = m_highpass_coeffs_1_7_o2;
+          numstages = 1;
+          break;
+        default:
+          spi_highpass_filter_enabled = 0;
+          NRF_LOG_INFO("SPI init filter error!");
+          break;
+    }
+    if (spi_highpass_filter_enabled) {
+        for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+            arm_biquad_cascade_df2T_init_f32(&highpass_instance[i], numstages, hp_coeffs, m_highpass_state[i]);
+        }
     }
 
     nrf_gpio_pin_write(18, 0);
@@ -912,7 +899,7 @@ void spi_init(void)
     gpio_init();
   
     //init filters
-    filter_init(0, IIRLP_ORDER); //default
+    filter_init(1, 1, 1); //default
 
 
     NRF_LOG_INFO("SPI init fin.");
