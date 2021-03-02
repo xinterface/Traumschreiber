@@ -144,6 +144,13 @@ void spi_ble_notify(uint16_t notify, ble_traum_t * p_traum_service)
         spi_enc_estimate_factor_5 = 1.4;
         spi_enc_warmup = 1;
         recieved_packets_counter = 0;
+        //reset stuff
+        for (int i; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
+            spi_encoded_values[i]     = 0;
+            spi_estimated_variance[i] = 0x100;
+            spi_estimated_average[i]  = 0x0;
+            spi_encode_shift[i]       = 0x00;
+        }
     } else {
         spi_ble_notification_flag -= 1;
         
@@ -223,11 +230,11 @@ void spi_data_conversion(uint8_t ad_id) {
 
     uint8_t   n_channel;
     float32_t value;
-    float32_t filtered_hp;
+//    float32_t filtered_hp;
     float32_t filtered_lp;
     float32_t filtered_iir;
 
-    if (debug_flag == 1 && ad_id != 0) return;
+//    if (debug_flag == 1 && ad_id != 0) return;
 
     //LED toggle back
     if (ad_id == 0) nrf_gpio_pin_write(20, 1);
@@ -239,32 +246,25 @@ void spi_data_conversion(uint8_t ad_id) {
         //val = (int32_t)(0x007FFFFF && (uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] + 0x000001FF * ((uint32_t)spi_read_buf[i*SPI_READ_PER_CHANNEL] && 0x00800000));
         //it is bytes 1,2,3. pos 0 is header.
         value = (float32_t) ((m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+1] << 24 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+2] << 16 | m_rx_buf[ad_id][i*SPI_READ_PER_CHANNEL+3] << 8) >> 8); //more elegant than the line above
-        if (spi_highpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&highpass_instance[n_channel], &value, &filtered_hp, 1);
-        } else if (spi_fo_hp_filter_enabled) {
-            fo_hp_last_y[n_channel] = fo_hp_alpha * (fo_hp_last_y[n_channel] + value - fo_hp_last_x[n_channel]);
-            fo_hp_last_x[n_channel] = value;
-            filtered_hp = fo_hp_last_y[n_channel];
-        } else {
-            filtered_hp = value;
-        }
+        //low pass filtering
         if (spi_lowpass_filter_enabled) {
-            arm_biquad_cascade_df2T_f32(&lowpass_instance[n_channel], &filtered_hp, &filtered_lp, 1);
+            arm_biquad_cascade_df2T_f32(&lowpass_instance[n_channel], &value, &filtered_lp, 1);
         } else {
-            filtered_lp = filtered_hp;
+            filtered_lp = value;
         }
+        //50Hz/notch filtering
         if (spi_iir_filter_enabled) {
             arm_biquad_cascade_df2T_f32(&iir_instance[n_channel], &filtered_lp, &filtered_iir, 1);
         } else {
             filtered_iir = filtered_lp;
         }
-        spi_channel_values[n_channel] += (int32_t) filtered_iir;
-        if (debug_flag) {
-            spi_channel_values[1*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_lp;
-            spi_channel_values[2*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) value;
-            ad_converted[1] += 1;
-            ad_converted[2] += 1;
-        }
+        spi_channel_values[n_channel] += filtered_iir;
+//        if (debug_flag) {
+//            spi_channel_values[1*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_lp;
+//            spi_channel_values[2*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) value;
+//            ad_converted[1] += 1;
+//            ad_converted[2] += 1;
+//        }
     }
     ad_recieved[ad_id] = false;
     ad_converted[ad_id] += 1;
@@ -295,10 +295,22 @@ void spi_data_conversion(uint8_t ad_id) {
         //instead:
         for(int i = 0; i < SPI_CHANNEL_NUMBER_TOTAL;i++) {
         
-            spi_filtered_values[i] = spi_channel_values[i] / ad_converted[i/SPI_READ_CHANNEL_NUMBER];
+            //calculate average
+            value = spi_channel_values[i] / ad_converted[i/SPI_READ_CHANNEL_NUMBER];
             spi_channel_values[i] = 0;
 
-        } //could technically be put inside the following if clause (toghether with the ad_converted = 0)
+            //high pass filter
+            if (spi_highpass_filter_enabled) {
+                arm_biquad_cascade_df2T_f32(&highpass_instance[n_channel], &value, &spi_filtered_values[i], 1);
+            } else if (spi_fo_hp_filter_enabled) {
+                fo_hp_last_y[n_channel] = fo_hp_alpha * (fo_hp_last_y[n_channel] + value - fo_hp_last_x[n_channel]);
+                fo_hp_last_x[n_channel] = value;
+                spi_filtered_values[i] = fo_hp_last_y[n_channel];
+            } else {
+                spi_filtered_values[i] = value;
+            }
+
+        } 
 
         //if there is space in spi_send_buffer
         //leaves 20 packages extra space for packets currently in the BLE buffers that are not yet send
@@ -315,11 +327,12 @@ void spi_data_conversion(uint8_t ad_id) {
                     //spi_data_gen_buf[i] = spi_data_gen_buf[i] + spi_data_gen_add;
                     spi_data_gen_buf[i] = spi_data_gen_buf[i]*(-1);
                     //spi_data_gen_buf[i] = spi_data_gen_buf[i] + (0x04 << (2*i));
+                    spi_filtered_values[i] = spi_data_gen_buf[i];
                 }
                 //NRF_LOG_INFO("gen: %i/%i+%i\tc: %i\t%i-%i", spi_data_gen_buf[0], spi_data_gen_buf[1], spi_data_gen_buf[2], spi_data_gen_buf[3], spi_data_gen_buf[4], spi_data_gen_buf[5]);
 
                 //copy new data to spi_read_buffer from generation buffer
-                memcpy(&spi_filtered_values, &spi_data_gen_buf, 32);
+                //memcpy(&spi_filtered_values, &spi_data_gen_buf, 32); //this does only work with int32_t (not with float32_t)
             }
 
             //encode
@@ -384,30 +397,48 @@ void spi_encode_data(void)
     //go by channel then byte
     uint8_t n_byte = 0; //current byte
     int32_t c_value = 0;
+    float32_t m_value = 0;
     float32_t s_value = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
-        c_value = spi_filtered_values[n_channel] - spi_encoded_values[n_channel];
+        m_value = spi_filtered_values[n_channel] - (float32_t)spi_encoded_values[n_channel];
         //average calculation (discarding outliers)
         if (spi_running_average_enabled) {
-            if (c_value > 5*spi_estimated_average[n_channel]) {
-                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
-            } else {
-                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*c_value;
-            }
-            c_value = c_value - (int32_t)spi_estimated_average[n_channel];
+//            if (m_value > 5*spi_estimated_average[n_channel]) {
+//                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
+//            } else {
+                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*m_value;
+//            }
+            m_value = m_value - spi_estimated_average[n_channel];
         }
-        s_value = (float32_t)c_value*(float32_t)c_value;
+        s_value = m_value*m_value;
         //variance calculation (discarding outliers)
         if (s_value > 5*spi_estimated_variance[n_channel]) {
             spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_5;
         } else {
             spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*s_value;
         }
+        //bit shift
+        c_value = (int32_t)m_value;
         c_value = c_value >> spi_encode_shift[n_channel];
         c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
         
+        //reconstruct encoded signal
         spi_encoded_values[n_channel] += c_value << spi_encode_shift[n_channel];
 
+        if (debug_flag) {
+          if (n_channel > 15) {
+              c_value = (int32_t)(spi_filtered_values[n_channel-16] - (float32_t)spi_encoded_values[n_channel-16]);
+              c_value = c_value >> spi_encode_shift[n_channel-16];
+              c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
+          } else if (n_channel > 7) {
+              c_value = (int32_t)(spi_estimated_average[n_channel-8]);
+              c_value = c_value >> spi_encode_shift[n_channel-8];
+              c_value = c_value > spi_max_difval ? spi_max_difval : (c_value < spi_min_difval ? spi_min_difval : c_value); //clipping to boarders
+          }
+        }
+
+
+        //include channel value (c_value) in package
         c_bits_left = traum_bits_per_channel;
         while (c_bits_left) {
           write_bits = MIN(b_bits_left,c_bits_left);
@@ -480,7 +511,10 @@ void spi_adapt_encoding(void)
 
     //send packet
     if (traum_use_code_characteristic) {
-        traum_encoding_char_update(spi_traum_service, spi_code_send_buf);
+//        NRF_LOG_INFO("BLE enc new");
+//        traum_encoding_char_update(spi_traum_service, spi_code_send_buf);
+        traum_code_characteristic_transmission_pending = 1;
+        traum_code_characteristic_transmission_pointer = spi_code_send_buf;
     }
     //reset counter
     recieved_packets_counter = 0;
@@ -608,7 +642,7 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
         
 //        NRF_LOG_INFO("spi conf 02.%i: %04x", i, err_code);
 //        NRF_LOG_FLUSH();
-        APP_ERROR_CHECK(err_code);
+//        APP_ERROR_CHECK(err_code);
     }
 
     //running average
@@ -619,6 +653,9 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     //data generation
     spi_data_gen_enabled = (value_p[0] & 0x02) >> 1;
+
+    //debug
+//    debug_flag = (value_p[0] & 0x01) >> 0;
     
 
     //filter switching
@@ -635,6 +672,9 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
     //min/max bitshift
     spi_encode_min_shift = (value_p[4] & 0xF0) >> 4;
     spi_encode_max_shift = (value_p[4] & 0x0F) >> 0;
+
+    //bitshift encoding safety factor
+    spi_enc_factor_safe_encoding = (value_p[5] & 0xF0) >> 4;
 
 
     NRF_LOG_INFO("SPI config updated.");

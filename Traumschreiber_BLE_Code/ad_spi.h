@@ -140,7 +140,7 @@ static uint16_t  recieved_packets_counter_max  = 16;
 static uint16_t  send_packets_counter          = 0;
 static uint16_t  collected_packets_counter     = 0;
 static uint32_t  buffer_usage_counter          = 0;
-static const uint8_t debug_flag = 0;
+static uint8_t debug_flag = 0;
 
 
 //filtering
@@ -185,11 +185,11 @@ static uint8_t  spi_running_average_enabled = 0;
 
 //encoding
 #define SPI_BLE_USE_NEW_ENCODING_FLAG   1
-static int32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
-static int32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
+static float32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
+static float32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
-static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x0};
+static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x1};
 static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
 static int16_t  spi_min_difval        = -512;
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
@@ -228,7 +228,7 @@ union data_union {
     struct{uint8_t byte_0_3[4]; uint8_t byte_4; uint8_t byte_5; uint16_t battery_status;} reg;
 } static spi_config_register;
 extern bool battery_read;
-static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x00, 0x00, 0x01, 0x11, 0x0F, 0x00, 0x00, 0x00};
+static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x00, 0x00, 0x01, 0x11, 0x0F, 0x80, 0x00, 0x00};
 
 
 //Debug Data Generation

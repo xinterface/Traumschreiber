@@ -61,6 +61,8 @@
 
 
 static const uint8_t traum_use_code_characteristic = 1;
+extern uint8_t traum_code_characteristic_transmission_pending;
+extern uint8_t* traum_code_characteristic_transmission_pointer;
 static uint8_t traum_use_only_one_characteristic = 0;
 #define BLE_TRAUM_BASE_BITS_PER_CHANNEL 10
 static uint8_t traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL;

@@ -53,6 +53,10 @@
 //semaphore for char_update-function, so full packet sends won't be interrupted
 bool ble_traum_char_update_semaphore = true;
 
+//externals from h-file
+uint8_t traum_code_characteristic_transmission_pending = 0;
+uint8_t* traum_code_characteristic_transmission_pointer;
+
 
 // ALREADY_DONE_FOR_YOU: Declaration of a function that will take care of some housekeeping of ble connections related to our service and characteristic
 void ble_traum_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
@@ -318,9 +322,17 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
     //with the while loop the second call is unnecessary anyways, because if there would be new data, it would be handelt automatically
     if (ble_traum_char_update_semaphore) {
         ble_traum_char_update_semaphore = false; //disable access
+        int8_t char_id = -1;
 
-        //check if new data is present. while loop breaks if char_id < 0
-        int8_t char_id = spi_new_data();
+        //check for pending encoding updates
+        if (traum_code_characteristic_transmission_pending) {
+            traum_encoding_char_update(p_traum_service, traum_code_characteristic_transmission_pointer);
+        }
+
+        //if no pending encoding data: check if new data is present. while loop breaks if char_id < 0
+        if (traum_code_characteristic_transmission_pending == 0) {
+            char_id = spi_new_data();
+        }
         while ((p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) && (char_id >= 0))
 	{
             uint32_t      err_code;
@@ -421,6 +433,15 @@ void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data)
                 hvx_params.p_data = data;
 
                 err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
+                if (err_code == NRF_ERROR_RESOURCES) {
+                    traum_code_characteristic_transmission_pending = 1;
+                    traum_code_characteristic_transmission_pointer = data;
+//                    NRF_LOG_INFO("BLE enc buffer full");
+                } else {
+//                    NRF_LOG_INFO("BLE enc send");
+                    traum_code_characteristic_transmission_pending = 0;
+                    //NRF_LOG_INFO("encoding update lost");
+                }
         }
     }
 }
