@@ -399,20 +399,26 @@ void spi_encode_data(void)
     int32_t c_value = 0;
     float32_t m_value = 0;
     float32_t s_value = 0;
+    float32_t std_5 = 0;
     for(int n_channel = 0; n_channel < SPI_CHANNEL_NUMBER_TOTAL; n_channel++) { //current channel
         m_value = spi_filtered_values[n_channel] - (float32_t)spi_encoded_values[n_channel];
+        std_5 = 5*spi_estimated_variance[n_channel];
         //average calculation (discarding outliers)
         if (spi_running_average_enabled) {
-//            if (m_value > 5*spi_estimated_average[n_channel]) {
-//                spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5;
-//            } else {
+            if (abs(m_value - spi_estimated_average[n_channel]) > std_5) {
+                if (m_value > spi_estimated_average[n_channel]) {
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 + spi_enc_estimate_factor_1*std_5;
+                } else {
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 - spi_enc_estimate_factor_1*std_5;
+                }
+            } else {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*m_value;
-//            }
+            }
             m_value = m_value - spi_estimated_average[n_channel];
         }
         s_value = m_value*m_value;
         //variance calculation (discarding outliers)
-        if (s_value > 5*spi_estimated_variance[n_channel]) {
+        if (s_value > std_5) {
             spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_5;
         } else {
             spi_estimated_variance[n_channel] = spi_estimated_variance[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*s_value;

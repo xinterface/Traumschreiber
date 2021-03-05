@@ -180,7 +180,7 @@ static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static uint8_t  spi_highpass_filter_enabled = 0;
 static uint8_t  spi_fo_hp_filter_enabled = 0;
-static uint8_t  spi_running_average_enabled = 0;
+static uint8_t  spi_running_average_enabled = 1;
 
 
 //encoding
@@ -228,7 +228,7 @@ union data_union {
     struct{uint8_t byte_0_3[4]; uint8_t byte_4; uint8_t byte_5; uint16_t battery_status;} reg;
 } static spi_config_register;
 extern bool battery_read;
-static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x00, 0x00, 0x01, 0x11, 0x0F, 0x80, 0x00, 0x00};
+static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x08, 0x00, 0x01, 0x11, 0x0F, 0x80, 0x00, 0x00};
 
 
 //Debug Data Generation
