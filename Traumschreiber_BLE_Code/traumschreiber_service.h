@@ -61,7 +61,7 @@
 
 
 static const uint8_t traum_use_code_characteristic = 1;
-extern uint8_t traum_code_characteristic_transmission_pending;
+extern int16_t traum_code_characteristic_transmission_pending;
 extern uint8_t* traum_code_characteristic_transmission_pointer;
 static uint8_t traum_use_only_one_characteristic = 0;
 #define BLE_TRAUM_BASE_BITS_PER_CHANNEL 10
@@ -103,7 +103,7 @@ void traum_service_init(ble_traum_t * p_traum_service);
 
 void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service);
 void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data);
-void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data);
+uint32_t traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data);
 
 
 

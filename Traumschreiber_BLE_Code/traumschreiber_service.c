@@ -54,7 +54,7 @@
 bool ble_traum_char_update_semaphore = true;
 
 //externals from h-file
-uint8_t traum_code_characteristic_transmission_pending = 0;
+int16_t traum_code_characteristic_transmission_pending = -1;
 uint8_t* traum_code_characteristic_transmission_pointer;
 
 
@@ -322,20 +322,34 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
     //with the while loop the second call is unnecessary anyways, because if there would be new data, it would be handelt automatically
     if (ble_traum_char_update_semaphore) {
         ble_traum_char_update_semaphore = false; //disable access
-        int8_t char_id = -1;
 
-        //check for pending encoding updates
-        if (traum_code_characteristic_transmission_pending) {
-            traum_encoding_char_update(p_traum_service, traum_code_characteristic_transmission_pointer);
-        }
 
-        //if no pending encoding data: check if new data is present. while loop breaks if char_id < 0
-        if (traum_code_characteristic_transmission_pending == 0) {
-            char_id = spi_new_data();
-        }
+        //check if new data is present. while loop breaks if char_id < 0
+        int8_t char_id = spi_new_data();
         while ((p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) && (char_id >= 0))
 	{
             uint32_t      err_code;
+            
+            //check for pending encoding updates
+            //0: try send package; >0: regular packages pending; <0: no coding update pending
+            if (traum_code_characteristic_transmission_pending == 0) {
+                
+                err_code = traum_encoding_char_update(p_traum_service, traum_code_characteristic_transmission_pointer);
+                
+                //if it was not successfully send, don't send regular package
+                if (err_code != NRF_SUCCESS && err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING) { //##quick fix
+//                    if (err_code == NRF_ERROR_RESOURCES) {
+//                        NRF_LOG_INFO("ENC send buffer full");
+//                    } else if (err_code == NRF_ERROR_INVALID_STATE) {
+//                        NRF_LOG_INFO("ENC notifications not enabled");
+//                    } else  {
+//                        NRF_LOG_INFO("ENC EEG err: %i 0x%04x", err_code, err_code);
+//                    }
+                    break;
+                }
+//                NRF_LOG_INFO("-");
+                traum_code_characteristic_transmission_pending -= 1;
+            }
 
             uint16_t      len = TRAUM_SERVICE_VALUE_LENGTH;
             uint16_t      value_handle;
@@ -376,6 +390,12 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
 
             //check if new data is present. while loop breaks if char_id < 0
             char_id = spi_new_data();
+
+//            if (traum_code_characteristic_transmission_pending > 0) {
+//                NRF_LOG_INFO(".");
+//            }
+            //reduce pending package count
+            traum_code_characteristic_transmission_pending -= 1;
 	}
     
         ble_traum_char_update_semaphore = true; //enable access
@@ -414,34 +434,35 @@ void traum_battery_status_update(ble_traum_t *p_traum_service, uint8_t * data)
 
 
 // Function to be called when updating encoding characteristic value
-void traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data)
+uint32_t traum_encoding_char_update(ble_traum_t *p_traum_service, uint8_t * data)
 {
+    uint32_t       err_code;
+    
     if (traum_use_code_characteristic) {
         if (p_traum_service->conn_handle != BLE_CONN_HANDLE_INVALID) {
+            uint16_t               len = CODE_CHAR_VALUE_LENGTH;
+            ble_gatts_hvx_params_t hvx_params;
+            memset(&hvx_params, 0, sizeof(hvx_params));
 
-                uint32_t       err_code;
+            hvx_params.handle = p_traum_service->char_code_handle.value_handle;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+            //hvx_params.type   = BLE_GATT_HVX_INDICATION;
+            hvx_params.offset = 0;
+            hvx_params.p_len  = &len;
+            hvx_params.p_data = data;
 
-                uint16_t               len = CODE_CHAR_VALUE_LENGTH;
-                ble_gatts_hvx_params_t hvx_params;
-                memset(&hvx_params, 0, sizeof(hvx_params));
-
-                hvx_params.handle = p_traum_service->char_code_handle.value_handle;
-                hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-                //hvx_params.type   = BLE_GATT_HVX_INDICATION;
-                hvx_params.offset = 0;
-                hvx_params.p_len  = &len;
-                hvx_params.p_data = data;
-
-                err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
-                if (err_code == NRF_ERROR_RESOURCES) {
-                    traum_code_characteristic_transmission_pending = 1;
-                    traum_code_characteristic_transmission_pointer = data;
-//                    NRF_LOG_INFO("BLE enc buffer full");
-                } else {
-//                    NRF_LOG_INFO("BLE enc send");
-                    traum_code_characteristic_transmission_pending = 0;
-                    //NRF_LOG_INFO("encoding update lost");
-                }
+            err_code = sd_ble_gatts_hvx(p_traum_service->conn_handle, &hvx_params);
+//            if (err_code == NRF_ERROR_RESOURCES) {
+//                traum_code_characteristic_transmission_pending = 1;
+//                traum_code_characteristic_transmission_pointer = data;
+////                    NRF_LOG_INFO("BLE enc buffer full");
+//            } else {
+////                    NRF_LOG_INFO("BLE enc send");
+//                traum_code_characteristic_transmission_pending = 0;
+//                //NRF_LOG_INFO("encoding update lost");
+//            }
         }
     }
+
+    return err_code;
 }

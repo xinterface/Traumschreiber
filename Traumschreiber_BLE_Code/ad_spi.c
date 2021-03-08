@@ -517,10 +517,10 @@ void spi_adapt_encoding(void)
 
     //send packet
     if (traum_use_code_characteristic) {
-//        NRF_LOG_INFO("BLE enc new");
 //        traum_encoding_char_update(spi_traum_service, spi_code_send_buf);
-        traum_code_characteristic_transmission_pending = 1;
+        traum_code_characteristic_transmission_pending = stb_read_capacity / stb_packet_size_r; //number of packets currently pending
         traum_code_characteristic_transmission_pointer = spi_code_send_buf;
+//        NRF_LOG_INFO("BLE enc new, %i, %i", stb_read_capacity, traum_code_characteristic_transmission_pending);
     }
     //reset counter
     recieved_packets_counter = 0;
