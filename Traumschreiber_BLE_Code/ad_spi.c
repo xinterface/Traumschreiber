@@ -85,7 +85,7 @@ static void spi_timer_timeout_handler(void * p_context)
     }
     collected_packets_counter = 0;
     send_packets_counter = 0;
-    packetSkipCounter = 0;
+//    packetSkipCounter = 0;
 }
 
 
@@ -514,6 +514,7 @@ void spi_adapt_encoding(void)
     buffer_usage_counter = buffer_usage_counter/(20*167);
     spi_code_send_buf[13] = buffer_usage_counter > 255 ? 255 : buffer_usage_counter;
     buffer_usage_counter = 0;
+    packetSkipCounter = 0;
 
     //send packet
     if (traum_use_code_characteristic) {
