@@ -407,9 +407,9 @@ void spi_encode_data(void)
         if (spi_running_average_enabled) {
             if (abs(m_value - spi_estimated_average[n_channel]) > std_5) {
                 if (m_value > spi_estimated_average[n_channel]) {
-                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 + spi_enc_estimate_factor_1*std_5;
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*std_5;
                 } else {
-                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 - spi_enc_estimate_factor_1*std_5;
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 - spi_enc_estimate_factor_1*std_5;
                 }
             } else {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*m_value;
