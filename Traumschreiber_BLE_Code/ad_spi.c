@@ -139,9 +139,9 @@ void spi_ble_notify(uint16_t notify, ble_traum_t * p_traum_service)
         stb_write_capacity  = 0;
         stb_read_capacity   = 0;
         stb_characteristic  = 0;
-        spi_enc_estimate_factor_9 = 0.9;
-        spi_enc_estimate_factor_1 = 0.1;
-        spi_enc_estimate_factor_5 = 1.4;
+        spi_enc_estimate_factor_9 = SPI_ENC_EST_FACTOR_9_W;
+        spi_enc_estimate_factor_1 = SPI_ENC_EST_FACTOR_1_W;
+        spi_enc_estimate_factor_5 = SPI_ENC_EST_FACTOR_5_W;
         spi_enc_warmup = 1;
         recieved_packets_counter = 0;
         //reset stuff
@@ -407,9 +407,9 @@ void spi_encode_data(void)
         if (spi_running_average_enabled) {
             if (abs(m_value - spi_estimated_average[n_channel]) > std_5) {
                 if (m_value > spi_estimated_average[n_channel]) {
-                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 + spi_enc_estimate_factor_1*std_5;
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*std_5;
                 } else {
-                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_5 - spi_enc_estimate_factor_1*std_5;
+                    spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 - spi_enc_estimate_factor_1*std_5;
                 }
             } else {
                 spi_estimated_average[n_channel] = spi_estimated_average[n_channel]*spi_enc_estimate_factor_9 + spi_enc_estimate_factor_1*m_value;
@@ -529,9 +529,9 @@ void spi_adapt_encoding(void)
     //check for warmup
     if (spi_enc_warmup == 1) {
         spi_enc_warmup = 0;
-        spi_enc_estimate_factor_9 = 0.999;
-        spi_enc_estimate_factor_1 = 0.001;
-        spi_enc_estimate_factor_5 = 1.004;
+        spi_enc_estimate_factor_9 = SPI_ENC_EST_FACTOR_9;
+        spi_enc_estimate_factor_1 = SPI_ENC_EST_FACTOR_1;
+        spi_enc_estimate_factor_5 = SPI_ENC_EST_FACTOR_5;
     }
 
 }

@@ -199,9 +199,15 @@ static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x00}; //how 
 #define SPI_FACTOR_SAFE_ENCODING_DEFAULT   8
 static uint8_t spi_enc_factor_safe_encoding = SPI_FACTOR_SAFE_ENCODING_DEFAULT;
 static uint8_t spi_ble_send_devision = 0;
-static float32_t spi_enc_estimate_factor_9 = 0.999;
-static float32_t spi_enc_estimate_factor_1 = 0.001;
-static float32_t spi_enc_estimate_factor_5 = 1.004;
+#define SPI_ENC_EST_FACTOR_9    0.995
+#define SPI_ENC_EST_FACTOR_1    0.005
+#define SPI_ENC_EST_FACTOR_5    1.005
+#define SPI_ENC_EST_FACTOR_9_W  0.9 //warmup
+#define SPI_ENC_EST_FACTOR_1_W  0.1 //warmup
+#define SPI_ENC_EST_FACTOR_5_W  1.4 //warmup
+static float32_t spi_enc_estimate_factor_9 = SPI_ENC_EST_FACTOR_9;
+static float32_t spi_enc_estimate_factor_1 = SPI_ENC_EST_FACTOR_1;
+static float32_t spi_enc_estimate_factor_5 = SPI_ENC_EST_FACTOR_5;
 static uint8_t spi_enc_warmup = 1;
 
 static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX buffer. */
