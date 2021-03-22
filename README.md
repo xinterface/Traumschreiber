@@ -9,5 +9,5 @@ Repository of the Traumschreiber and all affiliated projects and theses
 - A collection of operation manuals of the hardware components
 - In Progress: Streaming implementation
 - In Progress: Embedded System and BLE
-# Traumschreiber's List (Version 2.8)
+# Traumschreiber's List (Version 2.8) + (Version EEG_v2_92_X25)
 https://docs.google.com/spreadsheets/d/1prQXEEBJC7Lh-TTywT1AkwJn4IeFenbX4uT630RnToc/edit#gid=0
