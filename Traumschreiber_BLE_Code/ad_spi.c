@@ -104,7 +104,7 @@ void spi_ble_connect(ble_traum_t * p_traum_service)
 
     spi_ble_connected_flag = true;
     spi_ble_notification_flag = 0;
-    spi_ble_notification_threshold = traum_use_code_characteristic ? 4 : 3;
+    spi_ble_notification_threshold = traum_use_code_characteristic ? 2 : 1;
     NRF_LOG_INFO(" spi_ble_connect called");
     NRF_LOG_FLUSH();
 
@@ -112,8 +112,8 @@ void spi_ble_connect(ble_traum_t * p_traum_service)
 //    memset(&spi_config_register.send_data, 0, 4);
     memcpy(&spi_config_register.send_data, &spi_config_register_default, 8);
     spi_read_battery_status();
-
 }
+
 void spi_ble_disconnect()
 {
     spi_traum_service = NULL;
@@ -286,7 +286,7 @@ void spi_data_conversion(uint8_t ad_id) {
 
 
     //see if all channels were recieved, if yes try to send data
-    if (ad_converted[0] >= 3 && ad_converted[1] >= 3 && ad_converted[2] >= 3) {
+    if (ad_converted[0] >= SPI_ENC_PACKET_DIVISION && ad_converted[1] >= SPI_ENC_PACKET_DIVISION && ad_converted[2] >= SPI_ENC_PACKET_DIVISION) {
         collected_packets_counter += 1;
 
         //filter befor check if there is space
@@ -656,8 +656,8 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
     spi_running_average_enabled = (value_p[0] & 0x08) >> 3;
     
     //send everything on first characteristic
-    traum_use_only_one_characteristic = (value_p[0] & 0x04) >> 2;
-
+    traum_use_only_one_characteristic = 1;//(value_p[0] & 0x04) >> 2;
+    
     //data generation
     spi_data_gen_enabled = (value_p[0] & 0x02) >> 1;
 

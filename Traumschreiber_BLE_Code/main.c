@@ -234,6 +234,32 @@ static void gatt_init(void)
 {
     ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
     APP_ERROR_CHECK(err_code);
+
+    //enable larger packat sizes
+//    uint16_t blubb;
+//    blubb = nrf_ble_gatt_eff_mtu_get(&m_gatt, 0);
+//    NRF_LOG_INFO("mtu out: %i", blubb);
+//    NRF_LOG_FLUSH();
+    err_code = nrf_ble_gatt_att_mtu_periph_set(&m_gatt, BLE_TRAUM_ATT_MTU);
+    APP_ERROR_CHECK(err_code);
+//    NRF_LOG_INFO("mtu: %i", err_code);
+//    NRF_LOG_FLUSH();
+//    blubb = nrf_ble_gatt_eff_mtu_get(&m_gatt, 0);
+//    NRF_LOG_INFO("mtu out: %i", blubb);
+//    NRF_LOG_FLUSH();
+    
+//    uint8_t bla;
+//    err_code = nrf_ble_gatt_data_length_get(&m_gatt, BLE_CONN_HANDLE_INVALID, &bla);
+//    APP_ERROR_CHECK(err_code);
+//    NRF_LOG_INFO("dle: %i, %i", err_code, bla);
+//    NRF_LOG_FLUSH();
+    //return;
+    err_code = nrf_ble_gatt_data_length_set(&m_gatt, BLE_CONN_HANDLE_INVALID, BLE_TRAUM_GAP_DL);
+    APP_ERROR_CHECK(err_code);
+//    err_code = nrf_ble_gatt_data_length_get(&m_gatt, BLE_CONN_HANDLE_INVALID, &bla);
+//    APP_ERROR_CHECK(err_code);
+//    NRF_LOG_INFO("dle: %i, %i", err_code, bla);
+//    NRF_LOG_FLUSH();
 }
 
 
@@ -490,7 +516,6 @@ static void ble_stack_init(void)
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 	
-	
 	// Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_traum_service_observer, APP_BLE_OBSERVER_PRIO, ble_traum_service_on_ble_evt, (void*) &m_traum_service);
 }
@@ -698,9 +723,11 @@ int main(void)
     timers_init();
     buttons_leds_init(&erase_bonds);
     power_management_init();
+    
     ble_stack_init();
     gap_params_init();
     gatt_init();
+    
     advertising_init();
     services_init();
     conn_params_init();

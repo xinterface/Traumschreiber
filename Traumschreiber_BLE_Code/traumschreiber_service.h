@@ -55,7 +55,23 @@
 #define BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID       0xC0DE // Just a random, but recognizable value
 
 
-#define TRAUM_SERVICE_VALUE_LENGTH  20
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL 10
+#if BLE_TRAUM_BASE_BITS_PER_CHANNEL == 10
+  #define TRAUM_SERVICE_VALUE_LENGTH  30
+  #define BLE_TRAUM_ATT_MTU 33
+  #define BLE_TRAUM_GAP_DL 37
+#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 12
+  #define TRAUM_SERVICE_VALUE_LENGTH  36
+  #define BLE_TRAUM_ATT_MTU 39
+  #define BLE_TRAUM_GAP_DL 43
+#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 14
+  #define TRAUM_SERVICE_VALUE_LENGTH  42
+  #define BLE_TRAUM_ATT_MTU 45
+  #define BLE_TRAUM_GAP_DL 49
+#else
+  //values other than 10, 12 or 14 Bits are currently not implemented (compiling will therefore fail)
+#endif
+
 #define CONF_CHAR_VALUE_LENGTH  8
 #define CODE_CHAR_VALUE_LENGTH  14
 
@@ -63,8 +79,7 @@
 static const uint8_t traum_use_code_characteristic = 1;
 extern int16_t traum_code_characteristic_transmission_pending;
 extern uint8_t* traum_code_characteristic_transmission_pointer;
-static uint8_t traum_use_only_one_characteristic = 0;
-#define BLE_TRAUM_BASE_BITS_PER_CHANNEL 10
+static uint8_t traum_use_only_one_characteristic = 1;
 static uint8_t traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL;
 
 /**
@@ -83,6 +98,7 @@ typedef struct
 	ble_gatts_char_handles_t    char_base_handle_2;
 	ble_gatts_char_handles_t    char_code_handle;
 	ble_gatts_char_handles_t    char_conf_handle;
+    uint8_t   use_large_packages;
 }ble_traum_t;
 
 /**@brief Function for handling BLE Stack events related to our service and characteristic.

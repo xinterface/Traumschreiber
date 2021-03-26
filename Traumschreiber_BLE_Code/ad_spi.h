@@ -184,14 +184,26 @@ static uint8_t  spi_running_average_enabled = 1;
 
 
 //encoding
-#define SPI_BLE_USE_NEW_ENCODING_FLAG   1
+#define SPI_ENC_PACKET_DIVISION   3
 static float32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static float32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
 static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x1};
-static int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
-static int16_t  spi_min_difval        = -512;
+//static int16_t  spi_max_difval        = BLE_TRAUM_BASE_BITS_PER_CHANNEL == 12 ? 2047 : 511; //2**spi_max_bits_per_channel
+//static int16_t  spi_min_difval        = BLE_TRAUM_BASE_BITS_PER_CHANNEL == 12 ? -2048 : -512;
+#if BLE_TRAUM_BASE_BITS_PER_CHANNEL == 10
+  static const int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
+  static const int16_t  spi_min_difval        = -512;
+#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 12
+  static const int16_t  spi_max_difval        = 2047; //2**spi_max_bits_per_channel
+  static const int16_t  spi_min_difval        = -2048;
+#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 14
+  static const int16_t  spi_max_difval        = 8191; //2**spi_max_bits_per_channel
+  static const int16_t  spi_min_difval        = -8192;
+#else
+  //values other than 10, 12 or 14 Bits are currently not implemented (compiling will therefore fail)
+#endif
 static uint32_t  spi_ble_difval_mask  = 0x03FF;
 static uint8_t  spi_encode_min_shift = 0x0;
 static uint8_t  spi_encode_max_shift = 0xF;
@@ -214,7 +226,7 @@ static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX b
 
 
 //BLE send ring buffer
-#define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH+(SPI_BLE_USE_NEW_ENCODING_FLAG*10)
+#define SPI_BLE_BUFFER_WTRITE_LENGTH    TRAUM_SERVICE_VALUE_LENGTH
 #define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*48
 static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
 static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
@@ -225,7 +237,7 @@ static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //neede
 static uint16_t        stb_write_capacity  = 0; //used
 static uint16_t        stb_read_capacity   = 0; //used
 static uint8_t         stb_characteristic  = 0; //which characteristic to send on next package
-static uint16_t        stb_read_capacity_safety  = 20*TRAUM_SERVICE_VALUE_LENGTH; //used. actual buffer size seems to be 5/char=15, plus some extra
+static uint16_t        stb_read_capacity_safety  = 10*TRAUM_SERVICE_VALUE_LENGTH; //used. actual buffer size seems to be 5/char=15, plus some extra
 
 
 //static uint16_t traumschreiber_battery_status = 0;

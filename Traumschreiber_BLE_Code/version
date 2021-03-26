@@ -4,11 +4,10 @@ works:
 		in 32 Byte packets each
 		if data from all 3 is there and send buffer has space: try to filter/encode, write to send buffer and then send
 	sending via BLE
-		packages are (by default) distributed over three characteristics
 		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
-		in 20 Byte packets
+		in 30 Byte packets (unless Bits/channel is increased. Adds 3 Bytes per Bit.)
 		trying to send on each recieved AD packet
-			buffer-full check is now dirty (just checks if there is at least 20 packets read capacity plus new package and ignores write capacity)
+			buffer-full check is now dirty (just checks if there is at least 10 packets read capacity plus new package and ignores write capacity)
 	filtering
 		biquad cascade IIR filters from arm_math package for M4
 			two instances per channel
@@ -17,7 +16,8 @@ works:
 				coefficients (and order) are configurable via config characteristic
 		turned on by default, circumvented if dummy data is transmitted
 	encoding
-		put all 24 channels in 1.5 packages as difference (dcpm) values with 10Bit each
+		put all 24 channels in 1 package as difference (dcpm) values with 10Bit each
+			amount of Bits can be increased
 			values are shifted (aka least significant Bits are dropped) according to current variance
 			amount of shifting is pushed out via 'C0DE' characteristic every second as notification
 				also includes, how many packages have been dropped since the last C0DE update
@@ -25,8 +25,7 @@ works:
 	dummy data generation
 		can be toggeled via config characteristic (see below)
 		data gets generated every time a sample from the ADs come in
-		it is possible to have generated and sampled data (see below)
-		only generates 8 channels anyways
+		only generates on first 8 channels
 	battery reading
 		works now
 		AUXAIN register of AD1 (of 0-2) is read and written into byte 3&4 of config characteristic
@@ -35,7 +34,7 @@ works:
 		Byte 0: (0x08)
 			xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
 			oooo xooo: if set, running average filter (encoding) is active
-			oooo oxoo: if set, data is only send via first characteristic
+			oooo oxoo: if set, data is only send via first characteristic (has no effect)
 			oooo ooxo: generate data (0: off, 1: on)
 		Byte 1: (0x00)
 			reserved
@@ -72,7 +71,7 @@ works:
 		
 constraints:
 	datarate: sampled down from 500 to 167Hz
-		still 250Hz of packages is send
+		167Hz of packages is send
 error output
 	LED 18 is turned on when a packet is dropped internally and turned off again when one is succesfully cued
 	LED 20 is turned on when AD0 is signalling available data und turned on once internal processing starts (after SPI transfer). 
