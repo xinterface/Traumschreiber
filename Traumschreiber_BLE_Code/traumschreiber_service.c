@@ -311,7 +311,10 @@ void traum_service_init(ble_traum_t * p_traum_service)
         uint8_t value_conf[CONF_CHAR_VALUE_LENGTH] = {0x00};
         traum_conf_char_add(p_traum_service, &p_traum_service->char_conf_handle, value_conf, CONF_CHAR_VALUE_LENGTH, BLE_UUID_TRAUM_CONF_CHARACTERISTC_UUID);
         
-        p_traum_service->use_large_packages = 0;
+        //get buffer size
+//      NRF_LOG_INFO("Traum buffer size: %i", sd_ble_tx_packet_count_get()); //does not work. don't know how else...
+
+
 }
 
 

@@ -80,7 +80,7 @@ static void spi_timer_timeout_handler(void * p_context)
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
     if (spi_ble_connected_flag && spi_ble_notification_flag >= spi_ble_notification_threshold) {
 //        NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i/%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_position, stb_read_capacity);
-//        NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+        NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
         //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
     }
     collected_packets_counter = 0;
@@ -138,7 +138,7 @@ void spi_ble_notify(uint16_t notify, ble_traum_t * p_traum_service)
         stb_read_position   = 0;
         stb_write_capacity  = 0;
         stb_read_capacity   = 0;
-        stb_characteristic  = 0;
+        stb_characteristic  = BLE_TRAUM_SAMPLES_PER_PACKAGE;
         spi_enc_estimate_factor_9 = SPI_ENC_EST_FACTOR_9_W;
         spi_enc_estimate_factor_1 = SPI_ENC_EST_FACTOR_1_W;
         spi_enc_estimate_factor_5 = SPI_ENC_EST_FACTOR_5_W;
@@ -318,6 +318,7 @@ void spi_data_conversion(uint8_t ad_id) {
         if (stb_read_capacity + stb_read_capacity_safety + stb_packet_size_w > stb_buffer_length) {
                
             packetSkipCounter += 1;
+            samplesDroppedCounter += 1;
             nrf_gpio_pin_write(18, 0);
 
         } else {
@@ -385,6 +386,16 @@ void spi_send_battery_status() {
  */
 void spi_encode_data(void)
 {    
+
+    //check for header. needs to happen before everything else!
+    if (BLE_TRAUM_PACKAGE_HEADER_LENGTH) {
+        stb_characteristic = (stb_characteristic + 2) > BLE_TRAUM_SAMPLES_PER_PACKAGE ? 0 : stb_characteristic + 1;
+        if (stb_characteristic == 0) {
+            stb_write_position  = (stb_write_position + BLE_TRAUM_PACKAGE_HEADER_LENGTH) % stb_buffer_length;
+            stb_read_capacity  += BLE_TRAUM_PACKAGE_HEADER_LENGTH;
+        }
+    }
+
     //resetting the send buffer
     memset(&spi_send_buf[stb_write_position], 0, stb_packet_size_w);
     
@@ -472,6 +483,9 @@ void spi_encode_data(void)
     //update ringbuffer characteristics
     stb_write_position = (stb_write_position + stb_packet_size_w) % stb_buffer_length;
     stb_read_capacity += stb_packet_size_w;
+
+    //NRF_LOG_INFO("ep: %i / %i (%i)", stb_read_position, stb_write_position, stb_packet_size_w);
+
 }
 
 
@@ -548,7 +562,7 @@ int8_t spi_new_data(void)
         if (traum_use_only_one_characteristic) {
             return 0; //send new data on characteristic 0
         } else {
-            return stb_characteristic;
+            return -1;//stb_characteristic;
         }
     } else {
         //NRF_LOG_INFO(" no new data to send");
@@ -561,6 +575,15 @@ int8_t spi_new_data(void)
  */
 uint8_t* spi_get_data_pointer(void)
 {    
+    samplesDroppedCounter = samplesDroppedCounter > 15 ? 15 : samplesDroppedCounter;
+
+    //fill in header
+    spi_send_buf[stb_read_position] = 0;
+    spi_send_buf[stb_read_position] |= (0x0F & packageID) << 4;
+    spi_send_buf[stb_read_position] |= (0x0F & samplesDroppedCounter);
+
+    //NRF_LOG_INFO("gh: %i, %i (%i/%i)", packageID, samplesDroppedCounter, stb_read_position, stb_write_position);
+
     return &spi_send_buf[stb_read_position];
 }
 
@@ -571,7 +594,13 @@ void spi_data_sent()
     stb_read_position = (stb_read_position + stb_packet_size_r) % stb_buffer_length;
     stb_read_capacity -= stb_packet_size_r;
 
-    stb_characteristic = (stb_characteristic + 1) % 3;//AD_NUMBER; //update characteristic to send on next
+    //stb_characteristic = (stb_characteristic + 1) % 3;//AD_NUMBER; //update characteristic to send on next
+
+    //NRF_LOG_INFO("gp: %i, %i (%i)", packageID, samplesDroppedCounter, stb_read_position);
+
+    //reset dropped counter and increment packageID
+    samplesDroppedCounter = 0;
+    packageID = packageID > 14 ? 0 : packageID+1;
 
     send_packets_counter += 1;
 }
@@ -947,7 +976,8 @@ void spi_init(void)
   
     //init filters
     filter_init(1, 1, 1); //default
-
+     
+    NRF_LOG_INFO(" len service, write: %i, %i", TRAUM_SERVICE_VALUE_LENGTH, SPI_BLE_BUFFER_WTRITE_LENGTH);
 
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();
