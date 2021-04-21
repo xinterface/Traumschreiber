@@ -80,7 +80,7 @@ static void spi_timer_timeout_handler(void * p_context)
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
     if (spi_ble_connected_flag && spi_ble_notification_flag >= spi_ble_notification_threshold) {
 //        NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i/%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_position, stb_read_capacity);
-        NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+        //NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
         //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
     }
     collected_packets_counter = 0;
@@ -977,7 +977,7 @@ void spi_init(void)
     //init filters
     filter_init(1, 1, 1); //default
      
-    NRF_LOG_INFO(" len service, write: %i, %i", TRAUM_SERVICE_VALUE_LENGTH, SPI_BLE_BUFFER_WTRITE_LENGTH);
+    NRF_LOG_INFO(" len service, write: %i, %i, %08x", TRAUM_SERVICE_VALUE_LENGTH, SPI_BLE_BUFFER_WTRITE_LENGTH, spi_ble_difval_mask);
 
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();

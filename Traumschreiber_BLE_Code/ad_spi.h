@@ -209,7 +209,7 @@ static int32_t  spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL -
 //#else
 //  //values other than 10, 12, 14, 16 Bits are currently not implemented (compiling will therefore fail)
 //#endif
-static uint32_t  spi_ble_difval_mask  = 0x03FF;
+static uint32_t  spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL) - 1;//0x03FF;
 static uint8_t  spi_encode_min_shift = 0x0;
 static uint8_t  spi_encode_max_shift = 0xF;
 static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x00}; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)

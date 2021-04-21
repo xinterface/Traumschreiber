@@ -1,3 +1,5 @@
+0.3.3
+
 works:
 	fetching AD data
 		from all 3 AD's in parallel
@@ -6,7 +8,7 @@ works:
 	sending via BLE
 		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
 		in 30 Byte packets (unless Bits/channel is increased. Adds 3 Bytes per Bit.)
-		trying to send on each recieved AD packet
+		trying to send on each recieved AD packet, unless >1 samples/package is defined.
 			buffer-full check is now dirty (just checks if there is at least 10 packets read capacity plus new package and ignores write capacity)
 	filtering
 		biquad cascade IIR filters from arm_math package for M4
