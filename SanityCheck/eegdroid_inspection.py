@@ -6,7 +6,7 @@ csv files that were created by the eegdroid app.
     
 # EXAMPLE USAGES
 * Preprocess your EEG data - Read file, calculate regular time stamps, adjust offset, detrend, remove outliers 
-data = preprocess_eeg_debugging_data(fn="eeg_data.csv") #(using a small size parameter speeds up the process)
+data = preprocess_eeg_debugging_data(fn="eeg_data.csv") #(using a small slize parameter speeds up the process)
 
 * Plot some specific channels 
 plot_specific_channels(fn="test3_active_gnd.csv",
@@ -44,30 +44,29 @@ channel_labels = dict(zip(channel_numbers,channel_names))
 
 
 ########## FUNCTIONS ########
-def preprocess_eeg_debugging_data(fn, pkg_interval=6, ch="",slize=None, specific_channels=None, process_all_channels=False,  detrend=True,):
+def preprocess_eeg_debugging_data(fn,slize=None, ch="", specific_channels=None, pkg_interval=6, detrend=True):
     df = pd.read_csv("data/" + fn, skiprows=2)
     df["fixed_time"] = df.index*pkg_interval
     df.set_index(df["fixed_time"])
     if(slize): df = df[slize[0]:slize[1]] 
         
     if (ch):
-        df[ch] = df[ch].apply(lambda x: df[ch].mean() if(x > 4*df[ch].std()) else x) # Outlier removal
         df[ch] = signal.detrend(df[ch],type="constant") # Offset
         if (detrend): df[ch] = signal.detrend(df[ch])   # Remove trend
+        df[ch] = df[ch].apply(lambda x: df[ch].mean() if(abs(x) > 5*df[ch].std()) else x) # Outlier removal
         
     elif (specific_channels):
         for i in specific_channels:
             ch = f"ch{i}"
-            df[ch] = df[ch].apply(lambda x: df[ch].mean() if(abs(x) > 10*df[ch].std()) else x) # Outlier removal
             df[ch] = signal.detrend(df[ch],type="constant") # Offset
             if(detrend) df[ch] = signal.detrend(df[ch])   # Remove trend
-            
+            df[ch] = df[ch].apply(lambda x: df[ch].mean() if(abs(x) > 5*df[ch].std()) else x) # Outlier removal
     else:
         for i in range(1,25):
             ch = f"ch{i}"
-            df[ch] = df[ch].apply(lambda x: df[ch].mean() if(x > 4*df[ch].std()) else x) # Outlier removal
             df[ch] = signal.detrend(df[ch],type="constant") # Offset
             if(detrend) df[ch] = signal.detrend(df[ch])   # Remove trend
+            df[ch] = df[ch].apply(lambda x: df[ch].mean() if(abs(x) > 5*df[ch].std()) else x) # Outlier removal
 
     return df
     
