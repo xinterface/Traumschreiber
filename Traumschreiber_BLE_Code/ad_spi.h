@@ -143,46 +143,6 @@ static uint32_t  buffer_usage_counter          = 0;
 static uint8_t debug_flag = 0;
 
 
-//filtering
-//notch (50Hz)
-#define IIR_ORDER     6
-static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
-static float32_t m_biquad_coeffs_48_o4[5*2] = {9.6508098e-01, -1.5620271e+00, 9.6508098e-01, 1.5685816e+00, -9.6424139e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6110035e+00, -9.6592170e-01};
-static float32_t m_biquad_coeffs_48_o6[5*3] = {9.5097190e-01, -1.5391909e+00, 9.5097190e-01, 1.5788558e+00, -9.5095676e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5718505e+00, -9.7445124e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6235807e+00, -9.7592056e-01};
-static float32_t m_biquad_coeffs_46_o4[5*2] = {9.3137884e-01, -1.5089085e+00, 9.3137884e-01, 1.5195662e+00, -9.2813122e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6056036e+00, -9.3464386e-01};
-static float32_t m_biquad_coeffs_46_o6[5*3] = {9.0431875e-01, -1.4650689e+00, 9.0431875e-01, 1.5424813e+00, -9.0420359e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.5252273e+00, -9.4815099e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6297319e+00, -9.5389223e-01};
-static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
-static uint8_t  spi_iir_filter_enabled = 1;
-//low pass
-#define IIRLP_ORDER         6
-static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER];
-static float32_t m_lowpass_coeffs_o4[5*2] = {3.3628151e-03, 6.7256303e-03, 3.3628151e-03, 1.1295059e+00, -3.3775738e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.4013136e+00, -6.5967937e-01};
-static float32_t m_lowpass_coeffs_o6[5*3] = {8.5753645e-04, 1.7150729e-03, 8.5753645e-04, 8.7762954e-01, -2.0393320e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.8240579e-01, -3.4766539e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.2385063e+00, -6.9898443e-01};
-static arm_biquad_cascade_df2T_instance_f32 lowpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
-static uint8_t  spi_lowpass_filter_enabled = 1;
-//high pass
-#define IIRHP_ORDER         4
-static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
-static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01};
-static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.7247345e-01, -1.9449469e+00, 9.7247345e-01, 1.9608460e+00, -9.6129352e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9833308e+00, -9.8378341e-01};
-static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.9291659e-01, -1.9858332e+00, 9.9291659e-01, 1.9857830e+00, -9.8588336e-01};
-static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.8500771e-01, -1.9700154e+00, 9.8500771e-01, 1.9697906e+00, -9.7024021e-01};
-static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
-//first order high pass
-#define FO_HP_RC         1
-#define FO_HP_RC_0_5     0.3183099
-#define FO_HP_RC_1_3     0.1224269
-#define FO_HP_DT         0.002
-static float32_t fo_hp_alpha = FO_HP_RC / (FO_HP_RC + FO_HP_DT);
-static const float32_t fo_hp_alpha_0_5 = FO_HP_RC_0_5 / (FO_HP_RC_0_5 + FO_HP_DT);
-static const float32_t fo_hp_alpha_1_3 = FO_HP_RC_1_3 / (FO_HP_RC_1_3 + FO_HP_DT);
-static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
-static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
-static uint8_t  spi_highpass_filter_enabled = 0;
-static uint8_t  spi_fo_hp_filter_enabled = 0;
-static uint8_t  spi_running_average_enabled = 1;
-
-
 //encoding
 #define SPI_ENC_PACKET_DIVISION   3
 static float32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
@@ -190,25 +150,8 @@ static float32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
 static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x1};
-//static int32_t  spi_max_difval        = pow(2,BLE_TRAUM_BASE_BITS_PER_CHANNEL) - 1; //2**spi_max_bits_per_channel
-//static int32_t  spi_min_difval        = -pow(2,BLE_TRAUM_BASE_BITS_PER_CHANNEL);
 static const int32_t  spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL - 1)) - 1; //2**spi_max_bits_per_channel
 static int32_t  spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL - 1);
-//#if BLE_TRAUM_BASE_BITS_PER_CHANNEL == 10
-//  static const int16_t  spi_max_difval        = 511; //2**spi_max_bits_per_channel
-//  static const int16_t  spi_min_difval        = -512;
-//#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 12
-//  static const int16_t  spi_max_difval        = 2047; //2**spi_max_bits_per_channel
-//  static const int16_t  spi_min_difval        = -2048;
-//#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 14
-//  static const int16_t  spi_max_difval        = 8191; //2**spi_max_bits_per_channel
-//  static const int16_t  spi_min_difval        = -8192;
-//#elif  BLE_TRAUM_BASE_BITS_PER_CHANNEL == 16
-//  static const int16_t  spi_max_difval        = 32767; //2**spi_max_bits_per_channel
-//  static const int16_t  spi_min_difval        = -32768;
-//#else
-//  //values other than 10, 12, 14, 16 Bits are currently not implemented (compiling will therefore fail)
-//#endif
 static uint32_t  spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL) - 1;//0x03FF;
 static uint8_t  spi_encode_min_shift = 0x0;
 static uint8_t  spi_encode_max_shift = 0xF;
@@ -253,6 +196,58 @@ union data_union {
 } static spi_config_register;
 extern bool battery_read;
 static const uint8_t spi_config_register_default[CONF_CHAR_VALUE_LENGTH] = {0x08, 0x00, 0x01, 0x11, 0x0F, 0x80, 0x00, 0x00};
+
+
+
+//filtering
+//notch (50Hz)
+#define IIR_ORDER     6
+static float32_t m_biquad_state[SPI_CHANNEL_NUMBER_TOTAL][IIR_ORDER];
+static float32_t m_biquad_coeffs_48_o4[5*2] = {9.6508098e-01, -1.5620271e+00, 9.6508098e-01, 1.5685816e+00, -9.6424139e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6110035e+00, -9.6592170e-01};
+static float32_t m_biquad_coeffs_48_o6[5*3] = {9.5097190e-01, -1.5391909e+00, 9.5097190e-01, 1.5788558e+00, -9.5095676e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.5718505e+00, -9.7445124e-01, 1.0000000e+00, -1.6185452e+00, 1.0000000e+00, 1.6235807e+00, -9.7592056e-01};
+static float32_t m_biquad_coeffs_46_o4[5*2] = {9.3137884e-01, -1.5089085e+00, 9.3137884e-01, 1.5195662e+00, -9.2813122e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6056036e+00, -9.3464386e-01};
+static float32_t m_biquad_coeffs_46_o6[5*3] = {9.0431875e-01, -1.4650689e+00, 9.0431875e-01, 1.5424813e+00, -9.0420359e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.5252273e+00, -9.4815099e-01, 1.0000000e+00, -1.6200802e+00, 1.0000000e+00, 1.6297319e+00, -9.5389223e-01};
+static arm_biquad_cascade_df2T_instance_f32 iir_instance[SPI_CHANNEL_NUMBER_TOTAL];
+static uint8_t  spi_iir_filter_enabled = 1;
+//low pass
+#define IIRLP_ORDER         6
+static float32_t m_lowpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRLP_ORDER];
+static float32_t m_lowpass_coeffs_o4[5*2] = {3.3628151e-03, 6.7256303e-03, 3.3628151e-03, 1.1295059e+00, -3.3775738e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.4013136e+00, -6.5967937e-01};
+static float32_t m_lowpass_coeffs_o6[5*3] = {8.5753645e-04, 1.7150729e-03, 8.5753645e-04, 8.7762954e-01, -2.0393320e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 9.8240579e-01, -3.4766539e-01, 1.0000000e+00, 2.0000000e+00, 1.0000000e+00, 1.2385063e+00, -6.9898443e-01};
+static arm_biquad_cascade_df2T_instance_f32 lowpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
+static uint8_t  spi_lowpass_filter_enabled = 1;
+//high pass
+#define IIRHP_ORDER         4
+static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
+//167Hz Coefficients
+#if SPI_ENC_PACKET_DIVISION == 3
+static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01};
+static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.7247345e-01, -1.9449469e+00, 9.7247345e-01, 1.9608460e+00, -9.6129352e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9833308e+00, -9.8378341e-01};
+static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.9291659e-01, -1.9858332e+00, 9.9291659e-01, 1.9857830e+00, -9.8588336e-01};
+static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.8500771e-01, -1.9700154e+00, 9.8500771e-01, 1.9697906e+00, -9.7024021e-01};
+//250Hz Coefficients. The cutoff frequencies for o4 are different than the naming (see comments at end of line). Naming is kept for compatibility.
+#elif SPI_ENC_PACKET_DIVISION == 2
+static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01}; //actually 0_5
+static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.5820744e-01, -1.9164149e+00, 9.5820744e-01, 1.9403719e+00, -9.4140803e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9742524e+00, -9.7530664e-01}; //actually 1_3
+static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.8588336e-01, -1.9717667e+00, 9.8588336e-01, 1.9715674e+00, -9.7196600e-01};
+static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.7024011e-01, -1.9404802e+00, 9.7024011e-01, 1.9395944e+00, -9.4136606e-01};
+#else
+//should not happen -> crash compile
+#endif
+static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
+//first order high pass
+#define FO_HP_RC         1
+#define FO_HP_RC_0_5     0.3183099
+#define FO_HP_RC_1_3     0.1224269
+#define FO_HP_DT         0.002
+static float32_t fo_hp_alpha = FO_HP_RC / (FO_HP_RC + FO_HP_DT);
+static const float32_t fo_hp_alpha_0_5 = FO_HP_RC_0_5 / (FO_HP_RC_0_5 + FO_HP_DT);
+static const float32_t fo_hp_alpha_1_3 = FO_HP_RC_1_3 / (FO_HP_RC_1_3 + FO_HP_DT);
+static float32_t fo_hp_last_y[SPI_CHANNEL_NUMBER_TOTAL] = {0};
+static float32_t fo_hp_last_x[SPI_CHANNEL_NUMBER_TOTAL] = {0};
+static uint8_t  spi_highpass_filter_enabled = 0;
+static uint8_t  spi_fo_hp_filter_enabled = 0;
+static uint8_t  spi_running_average_enabled = 1;
 
 
 //Debug Data Generation
