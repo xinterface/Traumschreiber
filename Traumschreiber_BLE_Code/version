@@ -6,7 +6,7 @@ works:
 		in 32 Byte packets each
 		if data from all 3 is there and send buffer has space: try to filter/encode, write to send buffer and then send
 	sending via BLE
-		only fetching/sending if other device is connected and has enabled notifications on all three characteristics (both nicely triggered on BLE-events)
+		only fetching/sending if other device is connected and has enabled notifications on all data and C0DE characteristic (both nicely triggered on BLE-events)
 		in 30 Byte packets (unless Bits/channel is increased. Adds 3 Bytes per Bit.)
 		trying to send on each recieved AD packet, unless >1 samples/package is defined.
 			buffer-full check is now dirty (just checks if there is at least 10 packets read capacity plus new package and ignores write capacity)
@@ -14,7 +14,7 @@ works:
 		biquad cascade IIR filters from arm_math package for M4
 			two instances per channel
 				low pass and (50Hz) notch @ 500Hz
-				high pass @ 167Hz 
+				high pass @ 167Hz or @ 250Hz
 				coefficients (and order) are configurable via config characteristic
 		turned on by default, circumvented if dummy data is transmitted
 	encoding
@@ -38,6 +38,7 @@ works:
 			oooo xooo: if set, running average filter (encoding) is active
 			oooo oxoo: if set, data is only send via first characteristic (has no effect)
 			oooo ooxo: generate data (0: off, 1: on)
+			oooo ooox: transmission frequency (0: 167, 1: 250)
 		Byte 1: (0x00)
 			reserved
 		Byte 2: (0x01)
@@ -72,8 +73,8 @@ works:
 		
 		
 constraints:
-	datarate: sampled down from 500 to 167Hz
-		167Hz of packages is send
+	datarate: sampled down from 500 to 167Hz or 250Hz
+		167/250Hz of packages is send
 error output
 	LED 18 is turned on when a packet is dropped internally and turned off again when one is succesfully cued
 	LED 20 is turned on when AD0 is signalling available data und turned on once internal processing starts (after SPI transfer). 

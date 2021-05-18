@@ -80,7 +80,7 @@ static void spi_timer_timeout_handler(void * p_context)
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
     if (spi_ble_connected_flag && spi_ble_notification_flag >= spi_ble_notification_threshold) {
 //        NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i/%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_position, stb_read_capacity);
-        //NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+        NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
         //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
     }
     collected_packets_counter = 0;
@@ -230,11 +230,8 @@ void spi_data_conversion(uint8_t ad_id) {
 
     uint8_t   n_channel;
     float32_t value;
-//    float32_t filtered_hp;
     float32_t filtered_lp;
     float32_t filtered_iir;
-
-//    if (debug_flag == 1 && ad_id != 0) return;
 
     //LED toggle back
     if (ad_id == 0) nrf_gpio_pin_write(20, 1);
@@ -259,22 +256,9 @@ void spi_data_conversion(uint8_t ad_id) {
             filtered_iir = filtered_lp;
         }
         spi_channel_values[n_channel] += filtered_iir;
-//        if (debug_flag) {
-//            spi_channel_values[1*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) filtered_lp;
-//            spi_channel_values[2*SPI_READ_CHANNEL_NUMBER+i] += (int32_t) value;
-//            ad_converted[1] += 1;
-//            ad_converted[2] += 1;
-//        }
     }
     ad_recieved[ad_id] = false;
     ad_converted[ad_id] += 1;
-
-//    if (recieved_packets_counter % 250 == 0) {
-//        NRF_LOG_INFO("v: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(value));
-//        NRF_LOG_INFO("h: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_hp));
-//        NRF_LOG_INFO("l: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_lp));
-//        NRF_LOG_INFO("n: " NRF_LOG_FLOAT_MARKER "", NRF_LOG_FLOAT(filtered_iir));
-//    }
     
 //    //skipping events for downsampling
 //    if (triggerSkipCounter[ad_id] < triggerSkipCounterMax) {
@@ -286,7 +270,7 @@ void spi_data_conversion(uint8_t ad_id) {
 
 
     //see if all channels were recieved, if yes try to send data
-    if (ad_converted[0] >= SPI_ENC_PACKET_DIVISION && ad_converted[1] >= SPI_ENC_PACKET_DIVISION && ad_converted[2] >= SPI_ENC_PACKET_DIVISION) {
+    if (ad_converted[0] >= spi_enc_packet_division && ad_converted[1] >= spi_enc_packet_division && ad_converted[2] >= spi_enc_packet_division) {
         collected_packets_counter += 1;
 
         //filter befor check if there is space
@@ -331,9 +315,6 @@ void spi_data_conversion(uint8_t ad_id) {
                     spi_filtered_values[i] = spi_data_gen_buf[i];
                 }
                 //NRF_LOG_INFO("gen: %i/%i+%i\tc: %i\t%i-%i", spi_data_gen_buf[0], spi_data_gen_buf[1], spi_data_gen_buf[2], spi_data_gen_buf[3], spi_data_gen_buf[4], spi_data_gen_buf[5]);
-
-                //copy new data to spi_read_buffer from generation buffer
-                //memcpy(&spi_filtered_values, &spi_data_gen_buf, 32); //this does only work with int32_t (not with float32_t)
             }
 
             //encode
@@ -692,6 +673,10 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 
     //debug
 //    debug_flag = (value_p[0] & 0x01) >> 0;
+
+    //transmission frequency. can be 3 or 2.
+    spi_enc_packet_division = 3 - ((value_p[0] & 0x01) >> 0);
+
     
 
     //filter switching
@@ -845,25 +830,27 @@ void filter_init(uint8_t highpass, uint8_t lowpass, uint8_t notch)
         
     //low pass filter
     float32_t* hp_coeffs;
+    //selecting appropriate filter set, depending on transmission frequency
+    float32_t** hp_coeffs_source = spi_enc_packet_division == 2 ? m_highpass_coeffs_250hz : m_highpass_coeffs_167hz;
     highpass = highpass > 4 ? 0 : highpass;
     switch(highpass){
         case 0:
           spi_highpass_filter_enabled = 0;
           break;
         case 1:
-          hp_coeffs = m_highpass_coeffs_1_0_o4;
+          hp_coeffs = hp_coeffs_source[0];
           numstages = 2;
           break;
         case 2:
-          hp_coeffs = m_highpass_coeffs_1_7_o4;
+          hp_coeffs = hp_coeffs_source[1];
           numstages = 2;
           break;
         case 3:
-          hp_coeffs = m_highpass_coeffs_0_8_o2;
+          hp_coeffs = hp_coeffs_source[2];
           numstages = 1;
           break;
         case 4:
-          hp_coeffs = m_highpass_coeffs_1_7_o2;
+          hp_coeffs = hp_coeffs_source[3];
           numstages = 1;
           break;
         default:

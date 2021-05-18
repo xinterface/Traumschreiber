@@ -144,7 +144,8 @@ static uint8_t debug_flag = 0;
 
 
 //encoding
-#define SPI_ENC_PACKET_DIVISION   3
+#define SPI_ENC_PACKET_DIVISION_DEFAULT   3
+static uint8_t spi_enc_packet_division = SPI_ENC_PACKET_DIVISION_DEFAULT;
 static float32_t  spi_channel_values[SPI_CHANNEL_NUMBER_TOTAL];
 static float32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
@@ -220,20 +221,17 @@ static uint8_t  spi_lowpass_filter_enabled = 1;
 #define IIRHP_ORDER         4
 static float32_t m_highpass_state[SPI_CHANNEL_NUMBER_TOTAL][IIRHP_ORDER];
 //167Hz Coefficients
-#if SPI_ENC_PACKET_DIVISION == 3
-static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01};
-static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.7247345e-01, -1.9449469e+00, 9.7247345e-01, 1.9608460e+00, -9.6129352e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9833308e+00, -9.8378341e-01};
-static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.9291659e-01, -1.9858332e+00, 9.9291659e-01, 1.9857830e+00, -9.8588336e-01};
-static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.8500771e-01, -1.9700154e+00, 9.8500771e-01, 1.9697906e+00, -9.7024021e-01};
-//250Hz Coefficients. The cutoff frequencies for o4 are different than the naming (see comments at end of line). Naming is kept for compatibility.
-#elif SPI_ENC_PACKET_DIVISION == 2
-static float32_t m_highpass_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01}; //actually 0_5
-static float32_t m_highpass_coeffs_1_7_o4[5*2] = {9.5820744e-01, -1.9164149e+00, 9.5820744e-01, 1.9403719e+00, -9.4140803e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9742524e+00, -9.7530664e-01}; //actually 1_3
-static float32_t m_highpass_coeffs_0_8_o2[5*1] = {9.8588336e-01, -1.9717667e+00, 9.8588336e-01, 1.9715674e+00, -9.7196600e-01};
-static float32_t m_highpass_coeffs_1_7_o2[5*1] = {9.7024011e-01, -1.9404802e+00, 9.7024011e-01, 1.9395944e+00, -9.4136606e-01};
-#else
-//should not happen -> crash compile
-#endif
+static float32_t m_highpass_167_coeffs_1_0_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01};
+static float32_t m_highpass_167_coeffs_1_7_o4[5*2] = {9.7247345e-01, -1.9449469e+00, 9.7247345e-01, 1.9608460e+00, -9.6129352e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9833308e+00, -9.8378341e-01};
+static float32_t m_highpass_167_coeffs_0_8_o2[5*1] = {9.9291659e-01, -1.9858332e+00, 9.9291659e-01, 1.9857830e+00, -9.8588336e-01};
+static float32_t m_highpass_167_coeffs_1_7_o2[5*1] = {9.8500771e-01, -1.9700154e+00, 9.8500771e-01, 1.9697906e+00, -9.7024021e-01};
+static float32_t* m_highpass_coeffs_167hz[4] = {m_highpass_167_coeffs_1_0_o4,m_highpass_167_coeffs_1_7_o4,m_highpass_167_coeffs_0_8_o2,m_highpass_167_coeffs_1_7_o2};
+//250Hz Coefficients.
+static float32_t m_highpass_250_coeffs_0_5_o4[5*2] = {9.8371517e-01, -1.9674303e+00, 9.8371517e-01, 1.9768914e+00, -9.7704745e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9902712e+00, -9.9042840e-01}; //actually 0_5
+static float32_t m_highpass_250_coeffs_1_3_o4[5*2] = {9.5820744e-01, -1.9164149e+00, 9.5820744e-01, 1.9403719e+00, -9.4140803e-01, 1.0000000e+00, -2.0000000e+00, 1.0000000e+00, 1.9742524e+00, -9.7530664e-01}; //actually 1_3
+static float32_t m_highpass_250_coeffs_0_8_o2[5*1] = {9.8588336e-01, -1.9717667e+00, 9.8588336e-01, 1.9715674e+00, -9.7196600e-01};
+static float32_t m_highpass_250_coeffs_1_7_o2[5*1] = {9.7024011e-01, -1.9404802e+00, 9.7024011e-01, 1.9395944e+00, -9.4136606e-01};
+static float32_t* m_highpass_coeffs_250hz[4] = {m_highpass_250_coeffs_0_5_o4,m_highpass_250_coeffs_1_3_o4,m_highpass_250_coeffs_0_8_o2,m_highpass_250_coeffs_1_7_o2};
 static arm_biquad_cascade_df2T_instance_f32 highpass_instance[SPI_CHANNEL_NUMBER_TOTAL];
 //first order high pass
 #define FO_HP_RC         1
