@@ -35,7 +35,8 @@ works:
 	configuration characteristic, 8 Bytes total (default setting for each Byte in parenthesis)
 		Byte 0: (0x08)
 			xxoo oooo: gain (00: 1, 01: 2, 10: 4, 11:8)
-			oooo xooo: if set, running average filter (encoding) is active
+			ooxx oooo: Bits/channel (00: 10, 01: 14, 10: 16, 11:10)
+			oooo xooo: if set, running average filter (encoding) is active (default is 1)
 			oooo oxoo: if set, data is only send via first characteristic (has no effect)
 			oooo ooxo: generate data (0: off, 1: on)
 			oooo ooox: transmission frequency (0: 167, 1: 250)

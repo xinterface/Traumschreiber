@@ -55,8 +55,8 @@
 #define BLE_UUID_TRAUM_CODE_CHARACTERISTC_UUID       0xC0DE // Just a random, but recognizable value
 
 
-#define BLE_TRAUM_BASE_BITS_PER_CHANNEL 14
-#define BLE_TRAUM_SAMPLES_PER_PACKAGE 4
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL 16
+#define BLE_TRAUM_SAMPLES_PER_PACKAGE 1
 #define BLE_TRAUM_PACKAGE_HEADER_LENGTH 1
 #define TRAUM_SERVICE_VALUE_LENGTH (BLE_TRAUM_BASE_BITS_PER_CHANNEL * 3 * BLE_TRAUM_SAMPLES_PER_PACKAGE + BLE_TRAUM_PACKAGE_HEADER_LENGTH)
 #define BLE_TRAUM_ATT_MTU TRAUM_SERVICE_VALUE_LENGTH+3
@@ -65,12 +65,21 @@
 #define CONF_CHAR_VALUE_LENGTH  8
 #define CODE_CHAR_VALUE_LENGTH  14
 
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 10
+#define TRAUM_SERVICE_VALUE_LENGTH_10 (BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 * 3 * BLE_TRAUM_SAMPLES_PER_PACKAGE + BLE_TRAUM_PACKAGE_HEADER_LENGTH)
+
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL_14 14
+#define TRAUM_SERVICE_VALUE_LENGTH_14 (BLE_TRAUM_BASE_BITS_PER_CHANNEL_14 * 3 * BLE_TRAUM_SAMPLES_PER_PACKAGE + BLE_TRAUM_PACKAGE_HEADER_LENGTH)
+
+#define BLE_TRAUM_BASE_BITS_PER_CHANNEL_16 16
+#define TRAUM_SERVICE_VALUE_LENGTH_16 (BLE_TRAUM_BASE_BITS_PER_CHANNEL_16 * 3 * BLE_TRAUM_SAMPLES_PER_PACKAGE + BLE_TRAUM_PACKAGE_HEADER_LENGTH)
+
 
 static const uint8_t traum_use_code_characteristic = 1;
 extern int16_t traum_code_characteristic_transmission_pending;
 extern uint8_t* traum_code_characteristic_transmission_pointer;
 static uint8_t traum_use_only_one_characteristic = 1;
-static uint8_t traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL;
+static uint8_t traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL_10;
 
 /**
  * @brief This structure contains various status information for our service. 

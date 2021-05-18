@@ -294,12 +294,12 @@ void traum_service_init(ble_traum_t * p_traum_service)
 
 	
 	// OUR_JOB: Call the function our_char_add() to add our new characteristic to the service.
-        uint8_t value0[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_0, value0, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID, 1, 0);
-        uint8_t value1[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        //traum_char_add(p_traum_service, &p_traum_service->char_base_handle_1, value1, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID, 1, 0);
-        uint8_t value2[TRAUM_SERVICE_VALUE_LENGTH]  = {0x00};
-        //traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, TRAUM_SERVICE_VALUE_LENGTH, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID, 1, 0);
+        uint8_t value0[TRAUM_SERVICE_VALUE_LENGTH_10]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_0, value0, TRAUM_SERVICE_VALUE_LENGTH_10, BLE_UUID_TRAUM_BASE_CHARACTERISTC_0_UUID, 1, 0);
+        uint8_t value1[TRAUM_SERVICE_VALUE_LENGTH_14]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_1, value1, TRAUM_SERVICE_VALUE_LENGTH_14, BLE_UUID_TRAUM_BASE_CHARACTERISTC_1_UUID, 1, 0);
+        uint8_t value2[TRAUM_SERVICE_VALUE_LENGTH_16]  = {0x00};
+        traum_char_add(p_traum_service, &p_traum_service->char_base_handle_2, value2, TRAUM_SERVICE_VALUE_LENGTH_16, BLE_UUID_TRAUM_BASE_CHARACTERISTC_2_UUID, 1, 0);
         
         //add characteristic for encoding parameters
         if (traum_use_code_characteristic) {
@@ -363,10 +363,13 @@ void traum_eeg_data_characteristic_update(ble_traum_t *p_traum_service)
 
             if (char_id == 0) {
                 value_handle = p_traum_service->char_base_handle_0.value_handle;
+                len = TRAUM_SERVICE_VALUE_LENGTH_10;
             } else if (char_id == 1) {
                 value_handle = p_traum_service->char_base_handle_1.value_handle;
+                len = TRAUM_SERVICE_VALUE_LENGTH_14;
             } else if (char_id == 2) {
                 value_handle = p_traum_service->char_base_handle_2.value_handle;
+                len = TRAUM_SERVICE_VALUE_LENGTH_16;
             } else {
                 break;
             }

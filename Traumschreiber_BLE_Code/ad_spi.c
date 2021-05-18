@@ -80,7 +80,7 @@ static void spi_timer_timeout_handler(void * p_context)
 //    NRF_LOG_INFO("skip counter: %i", packetSkipCounter);
     if (spi_ble_connected_flag && spi_ble_notification_flag >= spi_ble_notification_threshold) {
 //        NRF_LOG_INFO("r/s: %i/%i+%i\tc: %i/%i", collected_packets_counter, send_packets_counter, packetSkipCounter, stb_write_position, stb_read_capacity);
-        NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
+        //NRF_LOG_INFO("r/s: %i/%i+%i", collected_packets_counter, send_packets_counter, packetSkipCounter);
         //NRF_LOG_INFO("w-t: %i/%i\t\t,cw: %i\t\tcr: %i", stb_write_position, stb_read_position, stb_write_capacity, stb_read_capacity);
     }
     collected_packets_counter = 0;
@@ -541,7 +541,7 @@ int8_t spi_new_data(void)
     //if there is data available in spi_send_buffer
     if (stb_read_capacity >= stb_packet_size_r) {
         if (traum_use_only_one_characteristic) {
-            return 0; //send new data on characteristic 0
+            return bits_per_channel; //send new data on characteristic x
         } else {
             return -1;//stb_characteristic;
         }
@@ -661,6 +661,45 @@ void spi_config_update(const uint8_t* value_p) //it's 'const' because there is a
 //        NRF_LOG_FLUSH();
 //        APP_ERROR_CHECK(err_code);
     }
+
+    //----------------
+    //bits encoded per channel. can be 0, 1 or 2 (for 10, 14 or 16)
+    bits_per_channel = (value_p[0] & 0x30) >> 4;
+    bits_per_channel = bits_per_channel > 2 ? 0 : bits_per_channel;
+
+    if (bits_per_channel == 0) {
+        spi_send_buf        = spi_send_buf_10;
+        stb_buffer_length   = stb_buffer_length_10; 
+        stb_packet_size_w   = stb_packet_size_w_10;
+        stb_packet_size_r   = stb_packet_size_r_10;
+        stb_read_capacity_safety  = stb_read_capacity_safety_10;
+        spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 - 1)) - 1;
+        spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 - 1);
+        spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL_10) - 1;
+        traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL_10;
+    } else if (bits_per_channel == 1) {
+        spi_send_buf        = spi_send_buf_14;
+        stb_buffer_length   = stb_buffer_length_14; 
+        stb_packet_size_w   = stb_packet_size_w_14;
+        stb_packet_size_r   = stb_packet_size_r_14;
+        stb_read_capacity_safety  = stb_read_capacity_safety_14;
+        spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_14 - 1)) - 1;
+        spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_14 - 1);
+        spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL_14) - 1;
+        traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL_14;
+    } else if (bits_per_channel == 2) {
+        spi_send_buf        = spi_send_buf_16;
+        stb_buffer_length   = stb_buffer_length_16; 
+        stb_packet_size_w   = stb_packet_size_w_16;
+        stb_packet_size_r   = stb_packet_size_r_16;
+        stb_read_capacity_safety  = stb_read_capacity_safety_16;
+        spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_16 - 1)) - 1;
+        spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_16 - 1);
+        spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL_16) - 1;
+        traum_bits_per_channel = BLE_TRAUM_BASE_BITS_PER_CHANNEL_16;
+    }
+    //----------------
+
 
     //running average
     spi_running_average_enabled = (value_p[0] & 0x08) >> 3;
@@ -964,7 +1003,7 @@ void spi_init(void)
     //init filters
     filter_init(1, 1, 1); //default
      
-    NRF_LOG_INFO(" len service, write: %i, %i, %08x", TRAUM_SERVICE_VALUE_LENGTH, SPI_BLE_BUFFER_WTRITE_LENGTH, spi_ble_difval_mask);
+    //NRF_LOG_INFO(" len service, write: %i, %i, %08x", TRAUM_SERVICE_VALUE_LENGTH, SPI_BLE_BUFFER_WTRITE_LENGTH, spi_ble_difval_mask);
 
     NRF_LOG_INFO("SPI init fin.");
     NRF_LOG_FLUSH();

@@ -151,9 +151,9 @@ static float32_t  spi_filtered_values[SPI_CHANNEL_NUMBER_TOTAL];
 static int32_t  spi_encoded_values[SPI_CHANNEL_NUMBER_TOTAL] = {0};
 static float32_t  spi_estimated_variance[SPI_CHANNEL_NUMBER_TOTAL] = {0x100};
 static float32_t  spi_estimated_average[SPI_CHANNEL_NUMBER_TOTAL] = {0x1};
-static const int32_t  spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL - 1)) - 1; //2**spi_max_bits_per_channel
-static int32_t  spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL - 1);
-static uint32_t  spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL) - 1;//0x03FF;
+static int32_t  spi_max_difval        = (1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 - 1)) - 1; //2**spi_max_bits_per_channel
+static int32_t  spi_min_difval        = -1 << (BLE_TRAUM_BASE_BITS_PER_CHANNEL_10 - 1);
+static uint32_t  spi_ble_difval_mask  = (1 << BLE_TRAUM_BASE_BITS_PER_CHANNEL_10) - 1;//0x03FF;
 static uint8_t  spi_encode_min_shift = 0x0;
 static uint8_t  spi_encode_max_shift = 0xF;
 static uint32_t  spi_encode_shift[SPI_CHANNEL_NUMBER_TOTAL]     = {0x00}; //how many bits the difval is shifted before encoding (aka, how many bits are dropped)
@@ -174,21 +174,50 @@ static uint8_t spi_enc_warmup = 1;
 static uint8_t  spi_code_send_buf[CODE_CHAR_VALUE_LENGTH] = {0x44};    /**< TX buffer. */
 
 
+//BLE send ring buffer 10
+#define SPI_BLE_BUFFER_WTRITE_LENGTH_10    BLE_TRAUM_BASE_BITS_PER_CHANNEL_10*SPI_CHANNEL_NUMBER_TOTAL/8
+#define SPI_BLE_BUFFER_LENGTH_10      TRAUM_SERVICE_VALUE_LENGTH_10*24
+static uint8_t  spi_send_buf_10[SPI_BLE_BUFFER_LENGTH_10];    /**< TX buffer. */
+static const uint16_t  stb_buffer_length_10   = SPI_BLE_BUFFER_LENGTH_10; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_w_10   = SPI_BLE_BUFFER_WTRITE_LENGTH_10; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_r_10   = TRAUM_SERVICE_VALUE_LENGTH_10; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_read_capacity_safety_10  = 7*TRAUM_SERVICE_VALUE_LENGTH_10; //used. actual buffer size seems to be 5/char=15, plus some extra
+
+//BLE send ring buffer 14
+#define SPI_BLE_BUFFER_WTRITE_LENGTH_14    BLE_TRAUM_BASE_BITS_PER_CHANNEL_14*SPI_CHANNEL_NUMBER_TOTAL/8
+#define SPI_BLE_BUFFER_LENGTH_14      TRAUM_SERVICE_VALUE_LENGTH_14*24
+static uint8_t  spi_send_buf_14[SPI_BLE_BUFFER_LENGTH_14];    /**< TX buffer. */
+static const uint16_t  stb_buffer_length_14   = SPI_BLE_BUFFER_LENGTH_14; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_w_14   = SPI_BLE_BUFFER_WTRITE_LENGTH_14; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_r_14   = TRAUM_SERVICE_VALUE_LENGTH_14; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_read_capacity_safety_14  = 7*TRAUM_SERVICE_VALUE_LENGTH_14; //used. actual buffer size seems to be 5/char=15, plus some extra
+
+//BLE send ring buffer 16
+#define SPI_BLE_BUFFER_WTRITE_LENGTH_16    BLE_TRAUM_BASE_BITS_PER_CHANNEL_16*SPI_CHANNEL_NUMBER_TOTAL/8
+#define SPI_BLE_BUFFER_LENGTH_16      TRAUM_SERVICE_VALUE_LENGTH_16*24
+static uint8_t  spi_send_buf_16[SPI_BLE_BUFFER_LENGTH_16];    /**< TX buffer. */
+static const uint16_t  stb_buffer_length_16   = SPI_BLE_BUFFER_LENGTH_16; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_w_16   = SPI_BLE_BUFFER_WTRITE_LENGTH_16; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_packet_size_r_16   = TRAUM_SERVICE_VALUE_LENGTH_16; //needed because somehow constants can't be used in calculations...
+static const uint16_t  stb_read_capacity_safety_16  = 7*TRAUM_SERVICE_VALUE_LENGTH_16; //used. actual buffer size seems to be 5/char=15, plus some extra
+
+
 //BLE send ring buffer
-#define SPI_BLE_BUFFER_WTRITE_LENGTH    BLE_TRAUM_BASE_BITS_PER_CHANNEL*SPI_CHANNEL_NUMBER_TOTAL/8
-#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*24
-static uint8_t  spi_send_buf[SPI_BLE_BUFFER_LENGTH];    /**< TX buffer. */
-static const uint16_t  stb_buffer_length   = SPI_BLE_BUFFER_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_write_position  = 0;
-static const uint16_t  stb_packet_size_w   = SPI_BLE_BUFFER_WTRITE_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_read_position   = 0;
-static const uint16_t  stb_packet_size_r   = TRAUM_SERVICE_VALUE_LENGTH; //needed because somehow constants can't be used in calculations...
-static uint16_t        stb_write_capacity  = 0; //used
-static uint16_t        stb_read_capacity   = 0; //used
-static uint8_t         stb_characteristic  = BLE_TRAUM_SAMPLES_PER_PACKAGE; //how many samples in current package
-static uint16_t        stb_read_capacity_safety  = 7*TRAUM_SERVICE_VALUE_LENGTH; //used. actual buffer size seems to be 5/char=15, plus some extra
+//#define SPI_BLE_BUFFER_WTRITE_LENGTH    BLE_TRAUM_BASE_BITS_PER_CHANNEL*SPI_CHANNEL_NUMBER_TOTAL/8
+//#define SPI_BLE_BUFFER_LENGTH      TRAUM_SERVICE_VALUE_LENGTH*24
+static uint8_t*  spi_send_buf        = spi_send_buf_10;    /**< TX buffer. */
+static uint16_t  stb_buffer_length   = stb_buffer_length_10; //needed because somehow constants can't be used in calculations...
+static uint16_t  stb_write_position  = 0;
+static uint16_t  stb_packet_size_w   = stb_packet_size_w_10; //needed because somehow constants can't be used in calculations...
+static uint16_t  stb_read_position   = 0;
+static uint16_t  stb_packet_size_r   = stb_packet_size_r_10; //needed because somehow constants can't be used in calculations...
+static uint16_t  stb_write_capacity  = 0; //used
+static uint16_t  stb_read_capacity   = 0; //used
+static uint8_t   stb_characteristic  = BLE_TRAUM_SAMPLES_PER_PACKAGE; //how many samples in current package
+static uint16_t  stb_read_capacity_safety  = stb_read_capacity_safety_10; //used. actual buffer size seems to be 5/char=15, plus some extra
 static uint8_t samplesDroppedCounter = 0;
 static uint8_t packageID = 0;
+static uint8_t bits_per_channel = 0; //0:10, 1:14, 2:16. Also codes the characteristic used.
 
 //static uint16_t traumschreiber_battery_status = 0;
 union data_union {
