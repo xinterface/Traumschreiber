@@ -346,17 +346,20 @@ void spi_data_conversion(uint8_t ad_id) {
 void spi_send_battery_status() {
 
         uint8_t ad_id = 1;
-        NRF_LOG_INFO("SPI battery reading.");
+        //NRF_LOG_INFO("SPI battery reading.");
+        //NRF_LOG_INFO("buffer0: %02x%02x%02x%02x%02x%02x", m_rx_buf[ad_id][0], m_rx_buf[ad_id][1], m_rx_buf[ad_id][2], m_rx_buf[ad_id][3], m_rx_buf[ad_id][4], m_rx_buf[ad_id][5]);
+        //NRF_LOG_INFO("buffer1: %02x%02x%02x%02x%02x%02x", m_rx_buf[ad_id][6], m_rx_buf[ad_id][7], m_rx_buf[ad_id][8], m_rx_buf[ad_id][9], m_rx_buf[ad_id][10], m_rx_buf[ad_id][11]);
 
-        spi_config_register.reg.battery_status = m_rx_buf[ad_id][4] << 8 | m_rx_buf[ad_id][5];
+        spi_config_register.reg.battery_status = (uint16_t) (m_rx_buf[ad_id][5] << 8 | m_rx_buf[ad_id][4]);
 //        NRF_LOG_INFO("S: %02x%02x%02x%02x", m_rx_buf[0][0], m_rx_buf[0][1], m_rx_buf[0][2], m_rx_buf[0][3]);
 //        NRF_LOG_INFO("S: %02x%02x%02x%02x", m_rx_buf[0][4], m_rx_buf[0][5], m_rx_buf[0][6], m_rx_buf[0][7]);
     
         traum_battery_status_update(spi_traum_service, spi_config_register.send_data);
 
-        NRF_LOG_INFO("SPI battery send.");
-        NRF_LOG_INFO("SPI battery %02x%02x%02x%02x", spi_config_register.send_data[0], spi_config_register.send_data[1], spi_config_register.send_data[2], spi_config_register.send_data[3]);
-        NRF_LOG_FLUSH();
+        //NRF_LOG_INFO("SPI battery send. %04x", spi_config_register.reg.battery_status);
+        //NRF_LOG_INFO("SPI battery0 %02x%02x%02x%02x", spi_config_register.send_data[0], spi_config_register.send_data[1], spi_config_register.send_data[2], spi_config_register.send_data[3]);
+        //NRF_LOG_INFO("SPI battery1 %02x%02x%02x%02x", spi_config_register.send_data[4], spi_config_register.send_data[5], spi_config_register.send_data[6], spi_config_register.send_data[7]);
+        //NRF_LOG_FLUSH();
 
         battery_read = false;
 }

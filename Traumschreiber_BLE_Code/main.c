@@ -235,31 +235,14 @@ static void gatt_init(void)
     ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
     APP_ERROR_CHECK(err_code);
 
-    //enable larger packat sizes
-//    uint16_t blubb;
-//    blubb = nrf_ble_gatt_eff_mtu_get(&m_gatt, 0);
-//    NRF_LOG_INFO("mtu out: %i", blubb);
-//    NRF_LOG_FLUSH();
+    //enable larger packet sizes
+//    uint16_t dummy = nrf_ble_gatt_eff_mtu_get(&m_gatt, 0);
     err_code = nrf_ble_gatt_att_mtu_periph_set(&m_gatt, BLE_TRAUM_ATT_MTU);
     APP_ERROR_CHECK(err_code);
-//    NRF_LOG_INFO("mtu: %i", err_code);
-//    NRF_LOG_FLUSH();
-//    blubb = nrf_ble_gatt_eff_mtu_get(&m_gatt, 0);
-//    NRF_LOG_INFO("mtu out: %i", blubb);
-//    NRF_LOG_FLUSH();
-    
-//    uint8_t bla;
-//    err_code = nrf_ble_gatt_data_length_get(&m_gatt, BLE_CONN_HANDLE_INVALID, &bla);
-//    APP_ERROR_CHECK(err_code);
-//    NRF_LOG_INFO("dle: %i, %i", err_code, bla);
-//    NRF_LOG_FLUSH();
-    //return;
+//    uint8_t dummy2;
+//    err_code = nrf_ble_gatt_data_length_get(&m_gatt, BLE_CONN_HANDLE_INVALID, &dummy2);
     err_code = nrf_ble_gatt_data_length_set(&m_gatt, BLE_CONN_HANDLE_INVALID, BLE_TRAUM_GAP_DL);
     APP_ERROR_CHECK(err_code);
-//    err_code = nrf_ble_gatt_data_length_get(&m_gatt, BLE_CONN_HANDLE_INVALID, &bla);
-//    APP_ERROR_CHECK(err_code);
-//    NRF_LOG_INFO("dle: %i, %i", err_code, bla);
-//    NRF_LOG_FLUSH();
 }
 
 
@@ -275,32 +258,6 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
     APP_ERROR_HANDLER(nrf_error);
 }
 
-
-/**@brief Function for handling the YYY Service events.
- * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
- *
- * @details This function will be called for all YY Service events which are passed to
- *          the application.
- *
- * @param[in]   p_yy_service   YY Service structure.
- * @param[in]   p_evt          Event received from the YY Service.
- *
- *
-static void on_yys_evt(ble_yy_service_t     * p_yy_service,
-                       ble_yy_service_evt_t * p_evt)
-{
-    switch (p_evt->evt_type)
-    {
-        case BLE_YY_NAME_EVT_WRITE:
-            APPL_LOG("[APPL]: charact written with value %s. ", p_evt->params.char_xx.value.p_str);
-            break;
-
-        default:
-            // No implementation needed.
-            break;
-    }
-}
-*/
 
 /**@brief Function for initializing services that will be used by the application.
  */
