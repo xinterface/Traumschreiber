@@ -100,6 +100,8 @@ static uint8_t       m_tx_buf[] = SPI_READ_SIGNAL;           /**< TX buffer. */
 static uint8_t       m_rx_buf[AD_NUMBER][SPI_READ_LENGTH + 1];    /**< RX buffer. */
 static const uint8_t m_length  =  sizeof(m_tx_buf);        /**< Transfer length. */
 static const uint8_t m_rlength =  sizeof(m_rx_buf[0]);        /**< RX Buffer length. */
+static uint8_t bat_tx_buf[8] = {0}; //buffer for battery read spi transfer
+static const uint8_t spi_ad_battery = 1; //AD number of the AD the battery voltage is connected to
 
 #define ADREG_GENERAL_USER_CONFIG_1 {0x11, 0x24} //write signal for register with standart settings
 #define ADREG_GENERAL_USER_CONFIG_2 {0x12, 0x09} //write signal for register with standart settings

@@ -345,7 +345,7 @@ void spi_data_conversion(uint8_t ad_id) {
 
 void spi_send_battery_status() {
 
-        uint8_t ad_id = 1;
+        uint8_t ad_id = spi_ad_battery;
         //NRF_LOG_INFO("SPI battery reading.");
         //NRF_LOG_INFO("buffer0: %02x%02x%02x%02x%02x%02x", m_rx_buf[ad_id][0], m_rx_buf[ad_id][1], m_rx_buf[ad_id][2], m_rx_buf[ad_id][3], m_rx_buf[ad_id][4], m_rx_buf[ad_id][5]);
         //NRF_LOG_INFO("buffer1: %02x%02x%02x%02x%02x%02x", m_rx_buf[ad_id][6], m_rx_buf[ad_id][7], m_rx_buf[ad_id][8], m_rx_buf[ad_id][9], m_rx_buf[ad_id][10], m_rx_buf[ad_id][11]);
@@ -592,13 +592,12 @@ void spi_data_sent()
 
 void spi_read_battery_status() {
         
-        int ad_id = 1;
+        int ad_id = spi_ad_battery;
         
 //    NRF_LOG_INFO("SPI BS 0.");
 //    NRF_LOG_FLUSH();
         
         uint8_t tx_buf_len = 8;
-        uint8_t bat_tx_buf[8] = {0};
 
         //writing in General User Config 2 to enable SAR read
         uint8_t tx_buf2[] = ADREG_GENERAL_USER_CONFIG_2; //len = 2
@@ -640,7 +639,7 @@ void spi_read_battery_status() {
 //    NRF_LOG_FLUSH();
 
        memset(m_rx_buf[ad_id], 0, tx_buf_len);
-       nrf_drv_spi_transfer(&spi[ad_id], m_tx_buf, tx_buf_len, m_rx_buf[ad_id], tx_buf_len);
+       nrf_drv_spi_transfer(&spi[ad_id], bat_tx_buf, tx_buf_len, m_rx_buf[ad_id], tx_buf_len);
        battery_read = true;
 
 //    NRF_LOG_INFO("SPI BS 5.");
